@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple VTT</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="toolbar">
+    <div class="toolbar-section">
+      <span class="section-label">Tools</span>
+      <button class="tool-btn active" data-tool="select" title="Select/Move">Select</button>
+      <button class="tool-btn" data-tool="line" title="Measure Line">Line</button>
+      <button class="tool-btn" data-tool="circle" title="Measure Circle">Circle</button>
+      <button class="tool-btn" data-tool="cone" title="Measure Cone">Cone</button>
+    </div>
+
+    <div class="toolbar-section">
+      <span class="section-label">Upload</span>
+      <button id="upload-map-btn">Map</button>
+      <input type="file" id="map-input" accept="image/*" hidden>
+      <button id="upload-token-btn">Token</button>
+      <input type="file" id="token-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+    </div>
+
+    <div class="toolbar-section">
+      <span class="section-label">Grid</span>
+      <label>
+        <input type="checkbox" id="grid-toggle" checked>
+        Show
+      </label>
+      <label>
+        Size:
+        <input type="number" id="grid-size" value="50" min="10" max="200" step="10">
+      </label>
+    </div>
+
+    <div class="toolbar-section">
+      <span class="section-label">Scale</span>
+      <label>
+        Pixels/ft:
+        <input type="number" id="scale-input" value="10" min="1" max="100">
+      </label>
+    </div>
+  </div>
+
+  <canvas id="game-canvas"></canvas>
+
+  <script type="module" src="/dist/client/client/index.js"></script>
+</body>
+</html>
