@@ -59,3 +59,15 @@ The server maintains authoritative game state. All client actions are sent to th
 
 - Grid size and visibility configurable in UI
 - Pixels-per-foot scale configurable in UI
+
+## Planned features
+- Pan and Zoom using right mouse button hold and scroll wheel
+- synchronise measuring tools so other players can see them
+- highlight tokens that are touched by a line, cone or circle measurement
+- toggle to snap tokens to grid during movement
+- grid alignment tool, where the user draws a box and the grid offset and size is set based on it
+- feet distance based on grid size, not pixels
+- garbage collect unused images
+- dragging an image into the map adds it as a token automatically
+- scale all new tokens to one grid size
+- a right click menu on tokens to increase/decrease size (1x1grid, 2x2grid, ect..), and an option to delete the token.
