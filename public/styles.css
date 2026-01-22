@@ -217,3 +217,32 @@ label {
 .collapsible-content.collapsed {
   display: none;
 }
+
+/* Scene Selector */
+#scene-select {
+  padding: 6px 8px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #2a2a3e;
+  color: #fff;
+  font-size: 14px;
+  min-width: 120px;
+  cursor: pointer;
+}
+
+#scene-select:focus {
+  outline: none;
+  border-color: #6a6a8e;
+}
+
+#scene-add,
+#scene-rename,
+#scene-delete {
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+#scene-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

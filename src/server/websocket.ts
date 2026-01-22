@@ -66,17 +66,39 @@ function handleMessage(message: WSMessage, sender: WebSocket): void {
       broadcast(message);
       break;
 
-    case 'map:snap':
-      stateManager.setSnapToGrid(message.enabled);
-      broadcast(message);
-      break;
-
     case 'measurement:update':
       broadcast(message);
       break;
 
     case 'measurement:clear':
       broadcast(message);
+      break;
+
+    case 'scene:create':
+      const newScene = stateManager.createScene(message.scene.name, message.scene.map.backgroundUrl || undefined);
+      stateManager.switchScene(newScene.id);
+      broadcast({ type: 'scene:create', scene: newScene });
+      broadcast({ type: 'scene:switch', sceneId: newScene.id });
+      break;
+
+    case 'scene:delete':
+      if (stateManager.deleteScene(message.sceneId)) {
+        // Also broadcast the new active scene in case it changed
+        broadcast(message);
+        broadcast({ type: 'scene:switch', sceneId: stateManager.getState().activeSceneId });
+      }
+      break;
+
+    case 'scene:switch':
+      if (stateManager.switchScene(message.sceneId)) {
+        broadcast(message);
+      }
+      break;
+
+    case 'scene:rename':
+      if (stateManager.renameScene(message.sceneId, message.name)) {
+        broadcast(message);
+      }
       break;
 
     case 'sync':

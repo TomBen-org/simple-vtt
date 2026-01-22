@@ -44,6 +44,10 @@ export function loadBackground(url: string): Promise<void> {
   });
 }
 
+export function clearBackground(): void {
+  backgroundMipmaps = null;
+}
+
 export function render(
   state: GameState,
   toolState: ToolState,
@@ -56,6 +60,13 @@ export function render(
 
   ctx.fillStyle = '#1a1a2e';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Get active scene
+  const activeScene = state.scenes.find(s => s.id === state.activeSceneId);
+  if (!activeScene) return;
+
+  const map = activeScene.map;
+  const tokens = activeScene.tokens;
 
   // Apply view transform
   ctx.save();
@@ -71,20 +82,20 @@ export function render(
     ctx.drawImage(mipmap, 0, 0, originalWidth, originalHeight);
   }
 
-  if (state.map.gridEnabled) {
-    drawGrid(state.map, viewState);
+  if (map.gridEnabled) {
+    drawGrid(map, viewState);
   }
 
-  state.tokens.forEach(token => {
-    drawToken(token, token.id === selectedTokenId, highlightedTokenIds.has(token.id), state.map.gridSize, viewState);
+  tokens.forEach(token => {
+    drawToken(token, token.id === selectedTokenId, highlightedTokenIds.has(token.id), map.gridSize, viewState);
   });
 
   // Draw local measurement
-  drawMeasurement(state.map, toolState);
+  drawMeasurement(map, toolState);
 
   // Draw remote measurements
   remoteMeasurements.forEach((measurement) => {
-    drawRemoteMeasurement(state.map, measurement);
+    drawRemoteMeasurement(map, measurement);
   });
 
   ctx.restore();

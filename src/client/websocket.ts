@@ -1,4 +1,4 @@
-import { WSMessage, GameState, Token, Measurement } from '../shared/types.js';
+import { WSMessage, GameState, Token, Measurement, Scene, DEFAULT_MAP_SETTINGS } from '../shared/types.js';
 
 type MessageHandler = (message: WSMessage) => void;
 
@@ -74,16 +74,37 @@ class WebSocketClient {
     this.send({ type: 'map:grid', enabled, size, offsetX, offsetY });
   }
 
-  setSnapToGrid(enabled: boolean): void {
-    this.send({ type: 'map:snap', enabled });
-  }
-
   updateMeasurement(measurement: Measurement): void {
     this.send({ type: 'measurement:update', measurement });
   }
 
   clearMeasurement(playerId: string): void {
     this.send({ type: 'measurement:clear', playerId });
+  }
+
+  createScene(name: string, backgroundUrl?: string): void {
+    const scene: Scene = {
+      id: '', // Will be assigned by server
+      name,
+      tokens: [],
+      map: {
+        ...DEFAULT_MAP_SETTINGS,
+        backgroundUrl: backgroundUrl || null,
+      },
+    };
+    this.send({ type: 'scene:create', scene });
+  }
+
+  deleteScene(sceneId: string): void {
+    this.send({ type: 'scene:delete', sceneId });
+  }
+
+  switchScene(sceneId: string): void {
+    this.send({ type: 'scene:switch', sceneId });
+  }
+
+  renameScene(sceneId: string, name: string): void {
+    this.send({ type: 'scene:rename', sceneId, name });
   }
 }
 

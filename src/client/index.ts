@@ -1,6 +1,6 @@
-import { GameState, Token, Measurement, DEFAULT_GAME_STATE } from '../shared/types.js';
+import { GameState, Token, Measurement, Scene, createDefaultGameState } from '../shared/types.js';
 import { wsClient } from './websocket.js';
-import { initCanvas, render, loadBackground, getCanvas, resizeCanvas } from './canvas.js';
+import { initCanvas, render, loadBackground, getCanvas, resizeCanvas, clearBackground } from './canvas.js';
 import { createToolState, setTool, startDrag, updateDrag, endDrag, Tool, ToolState, getCurrentMeasurement } from './tools.js';
 import { findTokenAtPoint, uploadImage, loadTokenImage } from './tokens.js';
 import {
@@ -12,11 +12,20 @@ import {
   setOnTokenUpload,
   setOnGridChange,
   setOnSnapChange,
+  setOnSceneChange,
+  setOnSceneCreate,
+  setOnSceneDelete,
+  setOnSceneRename,
+  updateSceneSelector,
 } from './ui.js';
 import { createViewState, ViewState, screenToWorld, startPan, updatePan, endPan, applyZoom } from './viewState.js';
 import { getTokensInMeasurement } from './geometry.js';
 
-let gameState: GameState = { ...DEFAULT_GAME_STATE, tokens: [], map: { ...DEFAULT_GAME_STATE.map } };
+let gameState: GameState = createDefaultGameState();
+
+function getActiveScene(): Scene | undefined {
+  return gameState.scenes.find(s => s.id === gameState.activeSceneId);
+}
 let toolState: ToolState = createToolState();
 let viewState: ViewState = createViewState();
 let selectedTokenId: string | null = null;
@@ -48,6 +57,9 @@ let contextMenuTokenId: string | null = null;
 // Modifier key state for snap override
 let ctrlKeyPressed = false;
 
+// Client-side snap to grid setting (not synced)
+let snapToGrid = true;
+
 function init(): void {
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
   if (!canvas) {
@@ -65,63 +77,82 @@ function init(): void {
     switch (message.type) {
       case 'sync':
         gameState = message.state;
-        updateUIFromState(gameState.map);
-        if (gameState.map.backgroundUrl) {
-          loadBackground(gameState.map.backgroundUrl);
+        const syncScene = getActiveScene();
+        if (syncScene) {
+          updateUIFromState(syncScene.map);
+          if (syncScene.map.backgroundUrl) {
+            loadBackground(syncScene.map.backgroundUrl);
+          } else {
+            clearBackground();
+          }
+          syncScene.tokens.forEach(token => loadTokenImage(token));
         }
-        gameState.tokens.forEach(token => loadTokenImage(token));
+        updateSceneSelector(gameState.scenes, gameState.activeSceneId);
         break;
 
       case 'token:add':
-        gameState.tokens.push(message.token);
-        loadTokenImage(message.token);
+        const addScene = getActiveScene();
+        if (addScene) {
+          addScene.tokens.push(message.token);
+          loadTokenImage(message.token);
+        }
         break;
 
       case 'token:move':
-        const token = gameState.tokens.find(t => t.id === message.id);
-        if (token) {
-          token.x = message.x;
-          token.y = message.y;
+        const moveScene = getActiveScene();
+        if (moveScene) {
+          const token = moveScene.tokens.find(t => t.id === message.id);
+          if (token) {
+            token.x = message.x;
+            token.y = message.y;
+          }
         }
         break;
 
       case 'token:remove':
-        gameState.tokens = gameState.tokens.filter(t => t.id !== message.id);
-        if (selectedTokenId === message.id) {
-          selectedTokenId = null;
+        const removeScene = getActiveScene();
+        if (removeScene) {
+          removeScene.tokens = removeScene.tokens.filter(t => t.id !== message.id);
+          if (selectedTokenId === message.id) {
+            selectedTokenId = null;
+          }
         }
         break;
 
       case 'token:resize':
-        const resizedToken = gameState.tokens.find(t => t.id === message.id);
-        if (resizedToken) {
-          resizedToken.gridWidth = message.gridWidth;
-          resizedToken.gridHeight = message.gridHeight;
+        const resizeScene = getActiveScene();
+        if (resizeScene) {
+          const resizedToken = resizeScene.tokens.find(t => t.id === message.id);
+          if (resizedToken) {
+            resizedToken.gridWidth = message.gridWidth;
+            resizedToken.gridHeight = message.gridHeight;
+          }
         }
         break;
 
       case 'map:set':
-        gameState.map.backgroundUrl = message.backgroundUrl;
-        loadBackground(message.backgroundUrl);
+        const mapSetScene = getActiveScene();
+        if (mapSetScene) {
+          mapSetScene.map.backgroundUrl = message.backgroundUrl;
+          loadBackground(message.backgroundUrl);
+        }
         break;
 
       case 'map:grid':
-        gameState.map.gridEnabled = message.enabled;
-        if (message.size !== undefined) {
-          gameState.map.gridSize = message.size;
+        const gridScene = getActiveScene();
+        if (gridScene) {
+          gridScene.map.gridEnabled = message.enabled;
+          if (message.size !== undefined) {
+            gridScene.map.gridSize = message.size;
+          }
+          if (message.offsetX !== undefined) {
+            gridScene.map.gridOffsetX = message.offsetX;
+          }
+          if (message.offsetY !== undefined) {
+            gridScene.map.gridOffsetY = message.offsetY;
+          }
+          updateUIFromState(gridScene.map);
         }
-        if (message.offsetX !== undefined) {
-          gameState.map.gridOffsetX = message.offsetX;
-        }
-        if (message.offsetY !== undefined) {
-          gameState.map.gridOffsetY = message.offsetY;
-        }
-        updateUIFromState(gameState.map);
-        break;
-
-      case 'map:snap':
-        gameState.map.snapToGrid = message.enabled;
-        updateUIFromState(gameState.map);
         break;
 
       case 'measurement:update':
@@ -137,6 +168,44 @@ function init(): void {
           remoteMeasurements.delete(message.playerId);
         }
         break;
+
+      case 'scene:create':
+        gameState.scenes.push(message.scene);
+        updateSceneSelector(gameState.scenes, gameState.activeSceneId);
+        break;
+
+      case 'scene:delete':
+        gameState.scenes = gameState.scenes.filter(s => s.id !== message.sceneId);
+        updateSceneSelector(gameState.scenes, gameState.activeSceneId);
+        break;
+
+      case 'scene:switch':
+        gameState.activeSceneId = message.sceneId;
+        // Clear measurements on scene switch
+        remoteMeasurements.clear();
+        wsClient.clearMeasurement(playerId);
+        const switchedScene = getActiveScene();
+        if (switchedScene) {
+          if (switchedScene.map.backgroundUrl) {
+            loadBackground(switchedScene.map.backgroundUrl);
+          } else {
+            clearBackground();
+          }
+          switchedScene.tokens.forEach(token => loadTokenImage(token));
+          updateUIFromState(switchedScene.map);
+        }
+        updateSceneSelector(gameState.scenes, gameState.activeSceneId);
+        selectedTokenId = null;
+        draggedToken = null;
+        break;
+
+      case 'scene:rename':
+        const renamedScene = gameState.scenes.find(s => s.id === message.sceneId);
+        if (renamedScene) {
+          renamedScene.name = message.name;
+        }
+        updateSceneSelector(gameState.scenes, gameState.activeSceneId);
+        break;
     }
   });
 
@@ -146,27 +215,30 @@ function init(): void {
     // Calculate highlighted tokens from all active measurements
     highlightedTokenIds = new Set<string>();
 
-    // Check local measurement
-    const localMeasurement = getCurrentMeasurement(toolState);
-    if (localMeasurement && localMeasurement.tool !== 'move' && localMeasurement.tool !== 'grid-align') {
-      const measurement: Measurement = {
-        id: 'local',
-        playerId: playerId,
-        tool: localMeasurement.tool as 'line' | 'circle' | 'cone',
-        startX: localMeasurement.startX,
-        startY: localMeasurement.startY,
-        endX: localMeasurement.endX,
-        endY: localMeasurement.endY,
-      };
-      const tokenIds = getTokensInMeasurement(measurement, gameState.tokens, gameState.map.gridSize);
-      tokenIds.forEach((id) => highlightedTokenIds.add(id));
-    }
+    const activeSceneForRender = getActiveScene();
+    if (activeSceneForRender) {
+      // Check local measurement
+      const localMeasurement = getCurrentMeasurement(toolState);
+      if (localMeasurement && localMeasurement.tool !== 'move' && localMeasurement.tool !== 'grid-align') {
+        const measurement: Measurement = {
+          id: 'local',
+          playerId: playerId,
+          tool: localMeasurement.tool as 'line' | 'circle' | 'cone',
+          startX: localMeasurement.startX,
+          startY: localMeasurement.startY,
+          endX: localMeasurement.endX,
+          endY: localMeasurement.endY,
+        };
+        const tokenIds = getTokensInMeasurement(measurement, activeSceneForRender.tokens, activeSceneForRender.map.gridSize);
+        tokenIds.forEach((id) => highlightedTokenIds.add(id));
+      }
 
-    // Check remote measurements
-    remoteMeasurements.forEach((measurement) => {
-      const tokenIds = getTokensInMeasurement(measurement, gameState.tokens, gameState.map.gridSize);
-      tokenIds.forEach((id) => highlightedTokenIds.add(id));
-    });
+      // Check remote measurements
+      remoteMeasurements.forEach((measurement) => {
+        const tokenIds = getTokensInMeasurement(measurement, activeSceneForRender.tokens, activeSceneForRender.map.gridSize);
+        tokenIds.forEach((id) => highlightedTokenIds.add(id));
+      });
+    }
 
     render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds);
     requestAnimationFrame(renderLoop);
@@ -183,7 +255,17 @@ function setupEventHandlers(): void {
   setOnMapUpload(async (file: File) => {
     try {
       const url = await uploadImage(file);
-      wsClient.setMapBackground(url);
+      const choice = confirm('Create a new scene with this map?\n\nOK = New scene\nCancel = Replace current background');
+      if (choice) {
+        // Create new scene
+        const name = prompt('Scene name:', `Scene ${gameState.scenes.length + 1}`);
+        if (name) {
+          wsClient.createScene(name, url);
+        }
+      } else {
+        // Replace current background
+        wsClient.setMapBackground(url);
+      }
     } catch (error) {
       console.error('Failed to upload map:', error);
     }
@@ -212,7 +294,23 @@ function setupEventHandlers(): void {
   });
 
   setOnSnapChange((enabled: boolean) => {
-    wsClient.setSnapToGrid(enabled);
+    snapToGrid = enabled;
+  });
+
+  setOnSceneChange((sceneId: string) => {
+    wsClient.switchScene(sceneId);
+  });
+
+  setOnSceneCreate((name: string) => {
+    wsClient.createScene(name);
+  });
+
+  setOnSceneDelete((sceneId: string) => {
+    wsClient.deleteScene(sceneId);
+  });
+
+  setOnSceneRename((sceneId: string, name: string) => {
+    wsClient.renameScene(sceneId, name);
   });
 }
 
@@ -239,18 +337,21 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const y = world.y;
 
     if (toolState.currentTool === 'move') {
-      const token = findTokenAtPoint(x, y, gameState.tokens, gameState.map.gridSize);
-      if (token) {
-        selectedTokenId = token.id;
-        draggedToken = token;
-        dragOffsetX = x - token.x;
-        dragOffsetY = y - token.y;
-        const tokenWidth = token.gridWidth * gameState.map.gridSize;
-        const tokenHeight = token.gridHeight * gameState.map.gridSize;
-        startDrag(toolState, token.x + tokenWidth / 2, token.y + tokenHeight / 2);
-      } else {
-        selectedTokenId = null;
-        draggedToken = null;
+      const activeSceneMouseDown = getActiveScene();
+      if (activeSceneMouseDown) {
+        const token = findTokenAtPoint(x, y, activeSceneMouseDown.tokens, activeSceneMouseDown.map.gridSize);
+        if (token) {
+          selectedTokenId = token.id;
+          draggedToken = token;
+          dragOffsetX = x - token.x;
+          dragOffsetY = y - token.y;
+          const tokenWidth = token.gridWidth * activeSceneMouseDown.map.gridSize;
+          const tokenHeight = token.gridHeight * activeSceneMouseDown.map.gridSize;
+          startDrag(toolState, token.x + tokenWidth / 2, token.y + tokenHeight / 2);
+        } else {
+          selectedTokenId = null;
+          draggedToken = null;
+        }
       }
     } else {
       startDrag(toolState, x, y);
@@ -280,25 +381,28 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
 
     if (toolState.isDragging) {
       if (toolState.currentTool === 'move' && draggedToken) {
-        const gridSize = gameState.map.gridSize;
-        const tokenWidth = draggedToken.gridWidth * gridSize;
-        const tokenHeight = draggedToken.gridHeight * gridSize;
+        const activeSceneMouseMove = getActiveScene();
+        if (activeSceneMouseMove) {
+          const gridSize = activeSceneMouseMove.map.gridSize;
+          const tokenWidth = draggedToken.gridWidth * gridSize;
+          const tokenHeight = draggedToken.gridHeight * gridSize;
 
-        let newX = x - dragOffsetX;
-        let newY = y - dragOffsetY;
+          let newX = x - dragOffsetX;
+          let newY = y - dragOffsetY;
 
-        // Snap to grid: Ctrl inverts the snap setting
-        const shouldSnap = ctrlKeyPressed ? !gameState.map.snapToGrid : gameState.map.snapToGrid;
-        if (shouldSnap) {
-          const offsetX = gameState.map.gridOffsetX || 0;
-          const offsetY = gameState.map.gridOffsetY || 0;
-          newX = Math.round((newX - offsetX) / gridSize) * gridSize + offsetX;
-          newY = Math.round((newY - offsetY) / gridSize) * gridSize + offsetY;
+          // Snap to grid: Ctrl inverts the snap setting
+          const shouldSnap = ctrlKeyPressed ? !snapToGrid : snapToGrid;
+          if (shouldSnap) {
+            const offsetX = activeSceneMouseMove.map.gridOffsetX || 0;
+            const offsetY = activeSceneMouseMove.map.gridOffsetY || 0;
+            newX = Math.round((newX - offsetX) / gridSize) * gridSize + offsetX;
+            newY = Math.round((newY - offsetY) / gridSize) * gridSize + offsetY;
+          }
+
+          draggedToken.x = newX;
+          draggedToken.y = newY;
+          updateDrag(toolState, draggedToken.x + tokenWidth / 2, draggedToken.y + tokenHeight / 2);
         }
-
-        draggedToken.x = newX;
-        draggedToken.y = newY;
-        updateDrag(toolState, draggedToken.x + tokenWidth / 2, draggedToken.y + tokenHeight / 2);
       } else {
         updateDrag(toolState, x, y);
 
@@ -348,7 +452,8 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
         const offsetX = minX % newGridSize;
         const offsetY = minY % newGridSize;
 
-        wsClient.setGrid(gameState.map.gridEnabled, newGridSize, offsetX, offsetY);
+        const activeSceneMouseUp = getActiveScene();
+        wsClient.setGrid(activeSceneMouseUp?.map.gridEnabled ?? true, newGridSize, offsetX, offsetY);
       }
     } else if (toolState.currentTool !== 'move' && toolState.currentTool !== 'grid-align' && toolState.isDragging) {
       // Clear measurement from other players' views
@@ -370,11 +475,14 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const screenY = e.clientY - rect.top;
     const world = screenToWorld(viewState, screenX, screenY);
 
-    const token = findTokenAtPoint(world.x, world.y, gameState.tokens, gameState.map.gridSize);
-    if (token) {
-      showContextMenu(e.clientX, e.clientY, token.id);
-    } else {
-      hideContextMenu();
+    const activeSceneContext = getActiveScene();
+    if (activeSceneContext) {
+      const token = findTokenAtPoint(world.x, world.y, activeSceneContext.tokens, activeSceneContext.map.gridSize);
+      if (token) {
+        showContextMenu(e.clientX, e.clientY, token.id);
+      } else {
+        hideContextMenu();
+      }
     }
   });
 

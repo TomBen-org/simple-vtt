@@ -14,12 +14,18 @@ export interface MapSettings {
   gridSize: number;
   gridOffsetX: number;  // Grid offset for alignment
   gridOffsetY: number;
-  snapToGrid: boolean;  // Whether tokens snap to grid
+}
+
+export interface Scene {
+  id: string;
+  name: string;
+  tokens: Token[];
+  map: MapSettings;
 }
 
 export interface GameState {
-  tokens: Token[];
-  map: MapSettings;
+  scenes: Scene[];
+  activeSceneId: string;
 }
 
 export interface Measurement {
@@ -40,9 +46,12 @@ export type WSMessage =
   | { type: 'token:resize'; id: string; gridWidth: number; gridHeight: number }
   | { type: 'map:set'; backgroundUrl: string }
   | { type: 'map:grid'; enabled: boolean; size?: number; offsetX?: number; offsetY?: number }
-  | { type: 'map:snap'; enabled: boolean }
   | { type: 'measurement:update'; measurement: Measurement }
-  | { type: 'measurement:clear'; playerId: string };
+  | { type: 'measurement:clear'; playerId: string }
+  | { type: 'scene:create'; scene: Scene }
+  | { type: 'scene:delete'; sceneId: string }
+  | { type: 'scene:switch'; sceneId: string }
+  | { type: 'scene:rename'; sceneId: string; name: string };
 
 export const DEFAULT_MAP_SETTINGS: MapSettings = {
   backgroundUrl: null,
@@ -50,10 +59,27 @@ export const DEFAULT_MAP_SETTINGS: MapSettings = {
   gridSize: 50,
   gridOffsetX: 0,
   gridOffsetY: 0,
-  snapToGrid: true,
 };
 
-export const DEFAULT_GAME_STATE: GameState = {
-  tokens: [],
-  map: { ...DEFAULT_MAP_SETTINGS },
-};
+export function generateId(): string {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+}
+
+export function createDefaultScene(name: string = 'Scene 1'): Scene {
+  return {
+    id: generateId(),
+    name,
+    tokens: [],
+    map: { ...DEFAULT_MAP_SETTINGS },
+  };
+}
+
+export function createDefaultGameState(): GameState {
+  const defaultScene = createDefaultScene();
+  return {
+    scenes: [defaultScene],
+    activeSceneId: defaultScene.id,
+  };
+}
+
+export const DEFAULT_GAME_STATE: GameState = createDefaultGameState();

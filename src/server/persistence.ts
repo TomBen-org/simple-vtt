@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { GameState, DEFAULT_GAME_STATE } from '../shared/types';
+import { GameState, Scene, DEFAULT_MAP_SETTINGS, generateId, createDefaultGameState } from '../shared/types';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
@@ -11,52 +11,69 @@ export function ensureDataDir(): void {
   }
 }
 
+function migrateTokens(tokens: any[], gridSize: number): any[] {
+  return (tokens || []).map((token: any) => {
+    // If token already has gridWidth/gridHeight, use those
+    if (token.gridWidth !== undefined && token.gridHeight !== undefined) {
+      return token;
+    }
+    // Migrate from pixel dimensions to grid units
+    const gridWidth = token.width ? Math.round(token.width / gridSize) || 1 : 1;
+    const gridHeight = token.height ? Math.round(token.height / gridSize) || 1 : 1;
+    return {
+      id: token.id,
+      x: token.x,
+      y: token.y,
+      imageUrl: token.imageUrl,
+      gridWidth,
+      gridHeight,
+      name: token.name,
+    };
+  });
+}
+
+function migrateState(parsed: any): GameState {
+  // If already has scenes array, return as-is (already migrated)
+  if (parsed.scenes && Array.isArray(parsed.scenes)) {
+    return parsed as GameState;
+  }
+
+  // Migrate from old single-scene format
+  const gridSize = parsed.map?.gridSize || DEFAULT_MAP_SETTINGS.gridSize;
+  const migratedTokens = migrateTokens(parsed.tokens, gridSize);
+
+  const defaultScene: Scene = {
+    id: generateId(),
+    name: 'Scene 1',
+    tokens: migratedTokens,
+    map: {
+      ...DEFAULT_MAP_SETTINGS,
+      ...parsed.map,
+      gridOffsetX: parsed.map?.gridOffsetX ?? 0,
+      gridOffsetY: parsed.map?.gridOffsetY ?? 0,
+    },
+  };
+
+  return {
+    scenes: [defaultScene],
+    activeSceneId: defaultScene.id,
+  };
+}
+
 export function loadState(): GameState {
   ensureDataDir();
 
   if (!fs.existsSync(STATE_FILE)) {
-    return { ...DEFAULT_GAME_STATE, tokens: [], map: { ...DEFAULT_GAME_STATE.map } };
+    return createDefaultGameState();
   }
 
   try {
     const data = fs.readFileSync(STATE_FILE, 'utf-8');
     const parsed = JSON.parse(data);
-
-    // Migrate tokens from old format (width/height in pixels) to new format (gridWidth/gridHeight)
-    const gridSize = parsed.map?.gridSize || DEFAULT_GAME_STATE.map.gridSize;
-    const migratedTokens = (parsed.tokens || []).map((token: any) => {
-      // If token already has gridWidth/gridHeight, use those
-      if (token.gridWidth !== undefined && token.gridHeight !== undefined) {
-        return token;
-      }
-      // Migrate from pixel dimensions to grid units
-      const gridWidth = token.width ? Math.round(token.width / gridSize) || 1 : 1;
-      const gridHeight = token.height ? Math.round(token.height / gridSize) || 1 : 1;
-      return {
-        id: token.id,
-        x: token.x,
-        y: token.y,
-        imageUrl: token.imageUrl,
-        gridWidth,
-        gridHeight,
-        name: token.name,
-      };
-    });
-
-    return {
-      tokens: migratedTokens,
-      map: {
-        ...DEFAULT_GAME_STATE.map,
-        ...parsed.map,
-        // Remove old pixelsPerFoot if present
-        gridOffsetX: parsed.map?.gridOffsetX ?? 0,
-        gridOffsetY: parsed.map?.gridOffsetY ?? 0,
-        snapToGrid: parsed.map?.snapToGrid ?? true,
-      },
-    };
+    return migrateState(parsed);
   } catch (error) {
     console.error('Error loading state:', error);
-    return { ...DEFAULT_GAME_STATE, tokens: [], map: { ...DEFAULT_GAME_STATE.map } };
+    return createDefaultGameState();
   }
 }
 

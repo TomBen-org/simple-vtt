@@ -27,6 +27,7 @@ Open http://localhost:3000 in your browser.
 - **No Login**: All users have full access to all features
 - **Pan and Zoom**: using right mouse button hold and scroll wheel
 - **Token Context Menu**: Right-click tokens to resize (1x1, 2x2, 3x3, 4x4 grid) or delete
+- **Multiple Scenes**: Support for multiple scenes, each with its own map, tokens, and grid settings. All clients view the same active scene (shared view).
 
 ## Tech Stack
 
@@ -65,14 +66,14 @@ The server maintains authoritative game state. All client actions are sent to th
 ## Configuration
 
 - **Grid section** (collapsible): Toggle visibility, configure size and offset (X/Y) with +/- buttons or direct input. Supports floating-point values.
-- **Snap toggle**: Next to the Move tool. Ctrl key temporarily inverts the setting.
+- **Snap toggle**: Next to the Move tool. Ctrl key temporarily inverts the setting. This is a client-side only setting (not synced).
+- **Scene selector**: Dropdown to switch between scenes, with buttons to add (+), rename, and delete scenes. When uploading a map, you can choose to create a new scene or replace the current background.
 - Distance is always 5 feet per grid cell
 
 ## Planned features
 - garbage collect unused images
 - dragging an image into the map adds it as a token automatically
-- support for uploading multiple map images, each map on a different scene
-- UX for swapping between scenes, deleting scenes, and moving tokens between scenes
+- moving tokens between scenes
 - improve the grid alignment tool by having the user bound box more than one tile and then enter how many tiles were bound, to improve accuracy
 
 ## Extra instructions for Claude

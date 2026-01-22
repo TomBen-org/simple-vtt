@@ -1,17 +1,25 @@
 import { Tool } from './tools.js';
-import { MapSettings } from '../shared/types.js';
+import { MapSettings, Scene } from '../shared/types.js';
 
 type ToolChangeHandler = (tool: Tool) => void;
 type MapUploadHandler = (file: File) => void;
 type TokenUploadHandler = (file: File) => void;
 type GridChangeHandler = (enabled: boolean, size: number, offsetX: number, offsetY: number) => void;
 type SnapChangeHandler = (enabled: boolean) => void;
+type SceneChangeHandler = (sceneId: string) => void;
+type SceneCreateHandler = (name: string) => void;
+type SceneDeleteHandler = (sceneId: string) => void;
+type SceneRenameHandler = (sceneId: string, name: string) => void;
 
 let onToolChange: ToolChangeHandler | null = null;
 let onMapUpload: MapUploadHandler | null = null;
 let onTokenUpload: TokenUploadHandler | null = null;
 let onGridChange: GridChangeHandler | null = null;
 let onSnapChange: SnapChangeHandler | null = null;
+let onSceneChange: SceneChangeHandler | null = null;
+let onSceneCreate: SceneCreateHandler | null = null;
+let onSceneDelete: SceneDeleteHandler | null = null;
+let onSceneRename: SceneRenameHandler | null = null;
 
 export function initUI(): void {
   document.querySelectorAll('.tool-btn').forEach(btn => {
@@ -144,6 +152,50 @@ export function initUI(): void {
       collapseBtn.textContent = isCollapsed ? '▶' : '▼';
     });
   }
+
+  // Scene selector
+  const sceneSelect = document.getElementById('scene-select') as HTMLSelectElement;
+  if (sceneSelect) {
+    sceneSelect.addEventListener('change', () => {
+      if (onSceneChange) {
+        onSceneChange(sceneSelect.value);
+      }
+    });
+  }
+
+  const sceneAddBtn = document.getElementById('scene-add');
+  if (sceneAddBtn) {
+    sceneAddBtn.addEventListener('click', () => {
+      const name = prompt('Enter scene name:');
+      if (name && onSceneCreate) {
+        onSceneCreate(name);
+      }
+    });
+  }
+
+  const sceneDeleteBtn = document.getElementById('scene-delete');
+  if (sceneDeleteBtn) {
+    sceneDeleteBtn.addEventListener('click', () => {
+      if (sceneSelect && onSceneDelete) {
+        if (confirm('Delete this scene? This cannot be undone.')) {
+          onSceneDelete(sceneSelect.value);
+        }
+      }
+    });
+  }
+
+  const sceneRenameBtn = document.getElementById('scene-rename');
+  if (sceneRenameBtn) {
+    sceneRenameBtn.addEventListener('click', () => {
+      if (sceneSelect && onSceneRename) {
+        const currentOption = sceneSelect.options[sceneSelect.selectedIndex];
+        const name = prompt('Enter new scene name:', currentOption?.textContent || '');
+        if (name) {
+          onSceneRename(sceneSelect.value, name);
+        }
+      }
+    });
+  }
 }
 
 export function setActiveTool(tool: Tool): void {
@@ -160,13 +212,11 @@ export function updateUIFromState(map: MapSettings): void {
   const gridSizeInput = document.getElementById('grid-size') as HTMLInputElement;
   const gridOffsetXInput = document.getElementById('grid-offset-x') as HTMLInputElement;
   const gridOffsetYInput = document.getElementById('grid-offset-y') as HTMLInputElement;
-  const snapToggle = document.getElementById('snap-toggle') as HTMLInputElement;
 
   if (gridToggle) gridToggle.checked = map.gridEnabled;
   if (gridSizeInput) gridSizeInput.value = map.gridSize.toString();
   if (gridOffsetXInput) gridOffsetXInput.value = (map.gridOffsetX || 0).toString();
   if (gridOffsetYInput) gridOffsetYInput.value = (map.gridOffsetY || 0).toString();
-  if (snapToggle) snapToggle.checked = map.snapToGrid;
 }
 
 export function setOnToolChange(handler: ToolChangeHandler): void {
@@ -187,4 +237,46 @@ export function setOnGridChange(handler: GridChangeHandler): void {
 
 export function setOnSnapChange(handler: SnapChangeHandler): void {
   onSnapChange = handler;
+}
+
+export function setOnSceneChange(handler: SceneChangeHandler): void {
+  onSceneChange = handler;
+}
+
+export function setOnSceneCreate(handler: SceneCreateHandler): void {
+  onSceneCreate = handler;
+}
+
+export function setOnSceneDelete(handler: SceneDeleteHandler): void {
+  onSceneDelete = handler;
+}
+
+export function setOnSceneRename(handler: SceneRenameHandler): void {
+  onSceneRename = handler;
+}
+
+export function updateSceneSelector(scenes: Scene[], activeSceneId: string): void {
+  const sceneSelect = document.getElementById('scene-select') as HTMLSelectElement;
+  if (!sceneSelect) return;
+
+  // Remember current selection
+  const previousValue = sceneSelect.value;
+
+  // Clear and repopulate
+  sceneSelect.innerHTML = '';
+  scenes.forEach(scene => {
+    const option = document.createElement('option');
+    option.value = scene.id;
+    option.textContent = scene.name;
+    sceneSelect.appendChild(option);
+  });
+
+  // Set the active scene
+  sceneSelect.value = activeSceneId;
+
+  // Disable delete button if only one scene
+  const deleteBtn = document.getElementById('scene-delete') as HTMLButtonElement;
+  if (deleteBtn) {
+    deleteBtn.disabled = scenes.length <= 1;
+  }
 }
