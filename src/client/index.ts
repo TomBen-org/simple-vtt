@@ -500,6 +500,14 @@ function setupContextMenu(): void {
 }
 
 function setupDragAndDrop(canvas: HTMLCanvasElement): void {
+  // Prevent browser from loading dropped images anywhere on the page
+  document.addEventListener('dragover', (e) => {
+    e.preventDefault();
+  });
+  document.addEventListener('drop', (e) => {
+    e.preventDefault();
+  });
+
   canvas.addEventListener('dragenter', (e) => {
     e.preventDefault();
     e.stopPropagation();
