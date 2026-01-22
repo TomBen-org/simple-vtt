@@ -4,7 +4,7 @@ import { MapSettings } from '../shared/types.js';
 type ToolChangeHandler = (tool: Tool) => void;
 type MapUploadHandler = (file: File) => void;
 type TokenUploadHandler = (file: File) => void;
-type GridChangeHandler = (enabled: boolean, size: number) => void;
+type GridChangeHandler = (enabled: boolean, size: number, offsetX: number, offsetY: number) => void;
 type SnapChangeHandler = (enabled: boolean) => void;
 
 let onToolChange: ToolChangeHandler | null = null;
@@ -50,18 +50,79 @@ export function initUI(): void {
 
   const gridToggle = document.getElementById('grid-toggle') as HTMLInputElement;
   const gridSizeInput = document.getElementById('grid-size') as HTMLInputElement;
+  const gridOffsetXInput = document.getElementById('grid-offset-x') as HTMLInputElement;
+  const gridOffsetYInput = document.getElementById('grid-offset-y') as HTMLInputElement;
+
+  function triggerGridChange(): void {
+    if (onGridChange && gridToggle && gridSizeInput && gridOffsetXInput && gridOffsetYInput) {
+      onGridChange(
+        gridToggle.checked,
+        parseFloat(gridSizeInput.value) || 50,
+        parseFloat(gridOffsetXInput.value) || 0,
+        parseFloat(gridOffsetYInput.value) || 0
+      );
+    }
+  }
+
   if (gridToggle) {
-    gridToggle.addEventListener('change', () => {
-      if (onGridChange) {
-        onGridChange(gridToggle.checked, parseInt(gridSizeInput?.value || '50'));
-      }
-    });
+    gridToggle.addEventListener('change', triggerGridChange);
   }
   if (gridSizeInput) {
-    gridSizeInput.addEventListener('change', () => {
-      if (onGridChange && gridToggle) {
-        onGridChange(gridToggle.checked, parseInt(gridSizeInput.value));
-      }
+    gridSizeInput.addEventListener('change', triggerGridChange);
+  }
+  if (gridOffsetXInput) {
+    gridOffsetXInput.addEventListener('change', triggerGridChange);
+  }
+  if (gridOffsetYInput) {
+    gridOffsetYInput.addEventListener('change', triggerGridChange);
+  }
+
+  // Grid size +/- buttons
+  const gridSizeInc = document.getElementById('grid-size-inc');
+  const gridSizeDec = document.getElementById('grid-size-dec');
+  if (gridSizeInc && gridSizeInput) {
+    gridSizeInc.addEventListener('click', () => {
+      gridSizeInput.value = String((parseFloat(gridSizeInput.value) || 50) + 1);
+      triggerGridChange();
+    });
+  }
+  if (gridSizeDec && gridSizeInput) {
+    gridSizeDec.addEventListener('click', () => {
+      const newValue = (parseFloat(gridSizeInput.value) || 50) - 1;
+      gridSizeInput.value = String(Math.max(1, newValue));
+      triggerGridChange();
+    });
+  }
+
+  // Grid offset X +/- buttons
+  const gridOffsetXInc = document.getElementById('grid-offset-x-inc');
+  const gridOffsetXDec = document.getElementById('grid-offset-x-dec');
+  if (gridOffsetXInc && gridOffsetXInput) {
+    gridOffsetXInc.addEventListener('click', () => {
+      gridOffsetXInput.value = String((parseFloat(gridOffsetXInput.value) || 0) + 1);
+      triggerGridChange();
+    });
+  }
+  if (gridOffsetXDec && gridOffsetXInput) {
+    gridOffsetXDec.addEventListener('click', () => {
+      gridOffsetXInput.value = String((parseFloat(gridOffsetXInput.value) || 0) - 1);
+      triggerGridChange();
+    });
+  }
+
+  // Grid offset Y +/- buttons
+  const gridOffsetYInc = document.getElementById('grid-offset-y-inc');
+  const gridOffsetYDec = document.getElementById('grid-offset-y-dec');
+  if (gridOffsetYInc && gridOffsetYInput) {
+    gridOffsetYInc.addEventListener('click', () => {
+      gridOffsetYInput.value = String((parseFloat(gridOffsetYInput.value) || 0) + 1);
+      triggerGridChange();
+    });
+  }
+  if (gridOffsetYDec && gridOffsetYInput) {
+    gridOffsetYDec.addEventListener('click', () => {
+      gridOffsetYInput.value = String((parseFloat(gridOffsetYInput.value) || 0) - 1);
+      triggerGridChange();
     });
   }
 
@@ -71,6 +132,16 @@ export function initUI(): void {
       if (onSnapChange) {
         onSnapChange(snapToggle.checked);
       }
+    });
+  }
+
+  // Grid section collapse toggle
+  const collapseBtn = document.getElementById('grid-collapse-btn');
+  const gridSettings = document.getElementById('grid-settings');
+  if (collapseBtn && gridSettings) {
+    collapseBtn.addEventListener('click', () => {
+      const isCollapsed = gridSettings.classList.toggle('collapsed');
+      collapseBtn.textContent = isCollapsed ? '▶' : '▼';
     });
   }
 }
@@ -87,10 +158,14 @@ export function setActiveTool(tool: Tool): void {
 export function updateUIFromState(map: MapSettings): void {
   const gridToggle = document.getElementById('grid-toggle') as HTMLInputElement;
   const gridSizeInput = document.getElementById('grid-size') as HTMLInputElement;
+  const gridOffsetXInput = document.getElementById('grid-offset-x') as HTMLInputElement;
+  const gridOffsetYInput = document.getElementById('grid-offset-y') as HTMLInputElement;
   const snapToggle = document.getElementById('snap-toggle') as HTMLInputElement;
 
   if (gridToggle) gridToggle.checked = map.gridEnabled;
   if (gridSizeInput) gridSizeInput.value = map.gridSize.toString();
+  if (gridOffsetXInput) gridOffsetXInput.value = (map.gridOffsetX || 0).toString();
+  if (gridOffsetYInput) gridOffsetYInput.value = (map.gridOffsetY || 0).toString();
   if (snapToggle) snapToggle.checked = map.snapToGrid;
 }
 

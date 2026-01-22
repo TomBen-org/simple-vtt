@@ -161,3 +161,59 @@ label {
   background: #333;
   margin: 4px 0;
 }
+
+/* Grid Controls */
+.grid-btn {
+  padding: 4px 8px;
+  min-width: 24px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.grid-control {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.grid-control input[type="number"] {
+  width: 60px;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.grid-control input[type="number"]::-webkit-outer-spin-button,
+.grid-control input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Collapsible section */
+.toolbar-section.collapsible {
+  flex-wrap: wrap;
+}
+
+.collapse-btn {
+  padding: 4px 8px;
+  min-width: 24px;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+}
+
+.collapse-btn:hover {
+  color: #fff;
+  background: transparent;
+}
+
+.collapsible-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapsible-content.collapsed {
+  display: none;
+}

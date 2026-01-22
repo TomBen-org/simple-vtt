@@ -56,26 +56,24 @@ The server maintains authoritative game state. All client actions are sent to th
 
 ## Tools
 
-1. **Select** - Click tokens to select, drag to move (shows distance). Snaps to grid if enabled.
+1. **Move** - Click tokens to select, drag to move (shows distance). Snap toggle next to it controls grid snapping (Ctrl temporarily inverts).
 2. **Measure Line** - Click and drag to measure distances
 3. **Measure Circle** - Click center, drag for radius
 4. **Measure Cone** - Click origin, drag for 60-degree cone
-5. **Align** - Draw a box over one grid cell on the map to set grid size and offset
+5. **Align** - In the Grid settings panel. Draw a box over one grid cell on the map to set grid size and offset.
 
 ## Configuration
 
-- Grid size and visibility configurable in UI
-- Snap-to-grid toggle in UI (Ctrl key temporarily inverts)
+- **Grid section** (collapsible): Toggle visibility, configure size and offset (X/Y) with +/- buttons or direct input. Supports floating-point values.
+- **Snap toggle**: Next to the Move tool. Ctrl key temporarily inverts the setting.
 - Distance is always 5 feet per grid cell
 
 ## Planned features
 - garbage collect unused images
 - dragging an image into the map adds it as a token automatically
-- ux for tweaking for grid offset
-- use floating point for grid scale and grid offset
-- ux increasing and decreasing grid scale and grid offset should go up and down by 1, and you should be able to type fractional values
 - support for uploading multiple map images, each map on a different scene
 - UX for swapping between scenes, deleting scenes, and moving tokens between scenes
+- improve the grid alignment tool by having the user bound box more than one tile and then enter how many tiles were bound, to improve accuracy
 
 ## Extra instructions for Claude
 - If necessary, update this file after implementing each feature, or having a discussion about features.

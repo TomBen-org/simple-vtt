@@ -148,7 +148,7 @@ function init(): void {
 
     // Check local measurement
     const localMeasurement = getCurrentMeasurement(toolState);
-    if (localMeasurement && localMeasurement.tool !== 'select' && localMeasurement.tool !== 'grid-align') {
+    if (localMeasurement && localMeasurement.tool !== 'move' && localMeasurement.tool !== 'grid-align') {
       const measurement: Measurement = {
         id: 'local',
         playerId: playerId,
@@ -207,8 +207,8 @@ function setupEventHandlers(): void {
     }
   });
 
-  setOnGridChange((enabled: boolean, size: number) => {
-    wsClient.setGrid(enabled, size);
+  setOnGridChange((enabled: boolean, size: number, offsetX: number, offsetY: number) => {
+    wsClient.setGrid(enabled, size, offsetX, offsetY);
   });
 
   setOnSnapChange((enabled: boolean) => {
@@ -238,7 +238,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const x = world.x;
     const y = world.y;
 
-    if (toolState.currentTool === 'select') {
+    if (toolState.currentTool === 'move') {
       const token = findTokenAtPoint(x, y, gameState.tokens, gameState.map.gridSize);
       if (token) {
         selectedTokenId = token.id;
@@ -279,7 +279,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const y = world.y;
 
     if (toolState.isDragging) {
-      if (toolState.currentTool === 'select' && draggedToken) {
+      if (toolState.currentTool === 'move' && draggedToken) {
         const gridSize = gameState.map.gridSize;
         const tokenWidth = draggedToken.gridWidth * gridSize;
         const tokenHeight = draggedToken.gridHeight * gridSize;
@@ -303,7 +303,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
         updateDrag(toolState, x, y);
 
         // Send measurement update to other players (throttled)
-        if (toolState.currentTool !== 'select' && toolState.currentTool !== 'grid-align') {
+        if (toolState.currentTool !== 'move' && toolState.currentTool !== 'grid-align') {
           const now = Date.now();
           if (now - lastMeasurementUpdate >= MEASUREMENT_THROTTLE_MS) {
             lastMeasurementUpdate = now;
@@ -331,7 +331,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
       return;
     }
 
-    if (toolState.currentTool === 'select' && draggedToken) {
+    if (toolState.currentTool === 'move' && draggedToken) {
       wsClient.moveToken(draggedToken.id, draggedToken.x, draggedToken.y);
       draggedToken = null;
     } else if (toolState.currentTool === 'grid-align' && toolState.isDragging) {
@@ -350,7 +350,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
 
         wsClient.setGrid(gameState.map.gridEnabled, newGridSize, offsetX, offsetY);
       }
-    } else if (toolState.currentTool !== 'select' && toolState.currentTool !== 'grid-align' && toolState.isDragging) {
+    } else if (toolState.currentTool !== 'move' && toolState.currentTool !== 'grid-align' && toolState.isDragging) {
       // Clear measurement from other players' views
       wsClient.clearMeasurement(playerId);
     }

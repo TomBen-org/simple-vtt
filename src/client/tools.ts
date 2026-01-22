@@ -1,4 +1,4 @@
-export type Tool = 'select' | 'line' | 'circle' | 'cone' | 'grid-align';
+export type Tool = 'move' | 'line' | 'circle' | 'cone' | 'grid-align';
 
 export interface ToolState {
   currentTool: Tool;
@@ -11,7 +11,7 @@ export interface ToolState {
 
 export function createToolState(): ToolState {
   return {
-    currentTool: 'select',
+    currentTool: 'move',
     isDragging: false,
     startX: 0,
     startY: 0,

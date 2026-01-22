@@ -170,8 +170,8 @@ function drawMeasurement(map: MapSettings, toolState: ToolState): void {
 
   ctx.save();
 
-  if (tool === 'select' || tool === 'line') {
-    ctx.strokeStyle = tool === 'select' ? '#00ff00' : '#ffff00';
+  if (tool === 'move' || tool === 'line') {
+    ctx.strokeStyle = tool === 'move' ? '#00ff00' : '#ffff00';
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
