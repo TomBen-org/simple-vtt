@@ -3,6 +3,14 @@ import { getTokenImage, loadTokenImage } from './tokens.js';
 import { ToolState, getCurrentMeasurement } from './tools.js';
 import { ViewState } from './viewState.js';
 
+// Drag and drop state for rendering preview
+export interface DragDropState {
+  active: boolean;
+  x: number;
+  y: number;
+  fileCount: number;
+}
+
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 let backgroundImage: HTMLImageElement | null = null;
@@ -49,7 +57,8 @@ export function render(
   selectedTokenId: string | null,
   viewState: ViewState,
   remoteMeasurements: Map<string, Measurement> = new Map(),
-  highlightedTokenIds: Set<string> = new Set()
+  highlightedTokenIds: Set<string> = new Set(),
+  dragDropState: DragDropState | null = null
 ): void {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -80,6 +89,11 @@ export function render(
   remoteMeasurements.forEach((measurement) => {
     drawRemoteMeasurement(state.map, measurement);
   });
+
+  // Draw drag and drop preview
+  if (dragDropState && dragDropState.active) {
+    drawDragDropPreview(dragDropState, state.map.gridSize);
+  }
 
   ctx.restore();
 }
@@ -322,4 +336,85 @@ function drawRemoteDistanceLabel(x: number, y: number, feet: number, label?: str
   ctx.lineWidth = 3;
   ctx.strokeText(text, x + 5, y);
   ctx.fillText(text, x + 5, y);
+}
+
+function drawDragDropPreview(dragDropState: DragDropState, gridSize: number): void {
+  const { x, y, fileCount } = dragDropState;
+  const radius = gridSize / 2;
+
+  // Calculate positions for multiple files (same as token placement)
+  const cols = Math.min(fileCount, 2);
+  const positions: { x: number; y: number }[] = [];
+  for (let i = 0; i < fileCount; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    positions.push({
+      x: x + col * gridSize + radius,
+      y: y + row * gridSize + radius
+    });
+  }
+
+  ctx.save();
+
+  // Draw a circle for each file position
+  for (let i = 0; i < positions.length; i++) {
+    const pos = positions[i];
+
+    // Draw semi-transparent circle
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(100, 200, 100, 0.3)';
+    ctx.fill();
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw upload icon (arrow pointing up) - only on the first circle if multiple
+    if (i === 0) {
+      drawUploadIcon(pos.x, pos.y, radius * 0.5);
+    }
+  }
+
+  // Draw file count indicator if multiple files
+  if (fileCount > 1) {
+    const firstPos = positions[0];
+    ctx.font = 'bold 14px Arial';
+    ctx.fillStyle = '#4ade80';
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 3;
+    const countText = `×${fileCount}`;
+    ctx.strokeText(countText, firstPos.x + radius + 5, firstPos.y - radius + 10);
+    ctx.fillText(countText, firstPos.x + radius + 5, firstPos.y - radius + 10);
+  }
+
+  ctx.restore();
+}
+
+function drawUploadIcon(cx: number, cy: number, size: number): void {
+  ctx.save();
+  ctx.strokeStyle = '#4ade80';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Arrow shaft
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + size * 0.5);
+  ctx.lineTo(cx, cy - size * 0.3);
+  ctx.stroke();
+
+  // Arrow head
+  ctx.beginPath();
+  ctx.moveTo(cx - size * 0.4, cy - size * 0.0);
+  ctx.lineTo(cx, cy - size * 0.5);
+  ctx.lineTo(cx + size * 0.4, cy - size * 0.0);
+  ctx.stroke();
+
+  // Base line (platform)
+  ctx.beginPath();
+  ctx.moveTo(cx - size * 0.5, cy + size * 0.5);
+  ctx.lineTo(cx + size * 0.5, cy + size * 0.5);
+  ctx.stroke();
+
+  ctx.restore();
 }

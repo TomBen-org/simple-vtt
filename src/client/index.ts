@@ -48,6 +48,36 @@ let contextMenuTokenId: string | null = null;
 // Modifier key state for snap override
 let ctrlKeyPressed = false;
 
+// Drag and drop state for file uploads
+interface DragDropState {
+  active: boolean;
+  x: number;
+  y: number;
+  fileCount: number;
+}
+let dragDropState: DragDropState | null = null;
+
+// Valid image types for drag-and-drop
+const VALID_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+
+function isValidImageFile(file: File): boolean {
+  return VALID_IMAGE_TYPES.includes(file.type);
+}
+
+function calculateTokenPositions(dropX: number, dropY: number, count: number, gridSize: number): {x: number, y: number}[] {
+  const positions: {x: number, y: number}[] = [];
+  const cols = Math.min(count, 2); // Max 2 columns
+  for (let i = 0; i < count; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    positions.push({
+      x: dropX + col * gridSize,
+      y: dropY + row * gridSize
+    });
+  }
+  return positions;
+}
+
 function init(): void {
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
   if (!canvas) {
@@ -60,6 +90,7 @@ function init(): void {
   setupEventHandlers();
   setupCanvasEvents(canvas);
   setupContextMenu();
+  setupDragAndDrop(canvas);
 
   wsClient.onMessage((message) => {
     switch (message.type) {
@@ -168,7 +199,7 @@ function init(): void {
       tokenIds.forEach((id) => highlightedTokenIds.add(id));
     });
 
-    render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds);
+    render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds, dragDropState);
     requestAnimationFrame(renderLoop);
   }
   renderLoop();
@@ -465,6 +496,117 @@ function setupContextMenu(): void {
     if (e.key === 'Escape') {
       hideContextMenu();
     }
+  });
+}
+
+function setupDragAndDrop(canvas: HTMLCanvasElement): void {
+  canvas.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  canvas.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Check if we have valid image files
+    const items = e.dataTransfer?.items;
+    if (!items) return;
+
+    let validCount = 0;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].kind === 'file' && VALID_IMAGE_TYPES.includes(items[i].type)) {
+        validCount++;
+      }
+    }
+
+    if (validCount > 0) {
+      const rect = canvas.getBoundingClientRect();
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+      const world = screenToWorld(viewState, screenX, screenY);
+
+      dragDropState = {
+        active: true,
+        x: world.x,
+        y: world.y,
+        fileCount: validCount
+      };
+      e.dataTransfer.dropEffect = 'copy';
+    } else {
+      dragDropState = null;
+      e.dataTransfer!.dropEffect = 'none';
+    }
+  });
+
+  canvas.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Only clear if we're actually leaving the canvas (not entering a child element)
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+      dragDropState = null;
+    }
+  });
+
+  canvas.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) {
+      dragDropState = null;
+      return;
+    }
+
+    // Filter to valid image files
+    const validFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      if (isValidImageFile(files[i])) {
+        validFiles.push(files[i]);
+      }
+    }
+
+    if (validFiles.length === 0) {
+      dragDropState = null;
+      return;
+    }
+
+    // Get drop position in world coordinates
+    const rect = canvas.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const world = screenToWorld(viewState, screenX, screenY);
+
+    // Calculate positions for each token
+    const positions = calculateTokenPositions(world.x, world.y, validFiles.length, gameState.map.gridSize);
+
+    // Upload each file and create tokens
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      const position = positions[i];
+
+      try {
+        const url = await uploadImage(file);
+        const token: Token = {
+          id: crypto.randomUUID(),
+          x: position.x,
+          y: position.y,
+          gridWidth: 1,
+          gridHeight: 1,
+          imageUrl: url,
+          name: file.name.replace(/\.[^/.]+$/, ''),
+        };
+        wsClient.addToken(token);
+      } catch (error) {
+        console.error('Failed to upload token:', error);
+      }
+    }
+
+    dragDropState = null;
   });
 }
 

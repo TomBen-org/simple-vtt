@@ -27,6 +27,7 @@ Open http://localhost:3000 in your browser.
 - **No Login**: All users have full access to all features
 - **Pan and Zoom**: using right mouse button hold and scroll wheel
 - **Token Context Menu**: Right-click tokens to resize (1x1, 2x2, 3x3, 4x4 grid) or delete
+- **Drag-and-Drop Tokens**: Drag image files (PNG, JPEG, GIF, WebP) onto the canvas to create tokens at the drop position. Multiple files are arranged in a grid pattern.
 
 ## Tech Stack
 
@@ -70,7 +71,6 @@ The server maintains authoritative game state. All client actions are sent to th
 
 ## Planned features
 - garbage collect unused images
-- dragging an image into the map adds it as a token automatically
 - support for uploading multiple map images, each map on a different scene
 - UX for swapping between scenes, deleting scenes, and moving tokens between scenes
 - improve the grid alignment tool by having the user bound box more than one tile and then enter how many tiles were bound, to improve accuracy
