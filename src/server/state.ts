@@ -39,11 +39,11 @@ class StateManager {
     return false;
   }
 
-  resizeToken(id: string, width: number, height: number): boolean {
+  resizeToken(id: string, gridWidth: number, gridHeight: number): boolean {
     const token = this.state.tokens.find(t => t.id === id);
     if (token) {
-      token.width = width;
-      token.height = height;
+      token.gridWidth = gridWidth;
+      token.gridHeight = gridHeight;
       this.persist();
       return true;
     }
@@ -55,16 +55,22 @@ class StateManager {
     this.persist();
   }
 
-  setMapScale(pixelsPerFoot: number): void {
-    this.state.map.pixelsPerFoot = pixelsPerFoot;
-    this.persist();
-  }
-
-  setGridSettings(enabled: boolean, size?: number): void {
+  setGridSettings(enabled: boolean, size?: number, offsetX?: number, offsetY?: number): void {
     this.state.map.gridEnabled = enabled;
     if (size !== undefined) {
       this.state.map.gridSize = size;
     }
+    if (offsetX !== undefined) {
+      this.state.map.gridOffsetX = offsetX;
+    }
+    if (offsetY !== undefined) {
+      this.state.map.gridOffsetY = offsetY;
+    }
+    this.persist();
+  }
+
+  setSnapToGrid(enabled: boolean): void {
+    this.state.map.snapToGrid = enabled;
     this.persist();
   }
 

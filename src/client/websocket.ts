@@ -62,20 +62,20 @@ class WebSocketClient {
     this.send({ type: 'token:remove', id });
   }
 
-  resizeToken(id: string, width: number, height: number): void {
-    this.send({ type: 'token:resize', id, width, height });
+  resizeToken(id: string, gridWidth: number, gridHeight: number): void {
+    this.send({ type: 'token:resize', id, gridWidth, gridHeight });
   }
 
   setMapBackground(backgroundUrl: string): void {
     this.send({ type: 'map:set', backgroundUrl });
   }
 
-  setMapScale(pixelsPerFoot: number): void {
-    this.send({ type: 'map:scale', pixelsPerFoot });
+  setGrid(enabled: boolean, size?: number, offsetX?: number, offsetY?: number): void {
+    this.send({ type: 'map:grid', enabled, size, offsetX, offsetY });
   }
 
-  setGrid(enabled: boolean, size?: number): void {
-    this.send({ type: 'map:grid', enabled, size });
+  setSnapToGrid(enabled: boolean): void {
+    this.send({ type: 'map:snap', enabled });
   }
 
   updateMeasurement(measurement: Measurement): void {

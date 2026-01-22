@@ -24,18 +24,20 @@ export function getTokenImage(imageUrl: string): HTMLImageElement | undefined {
   return tokenImages.get(imageUrl);
 }
 
-export function isPointInToken(x: number, y: number, token: Token): boolean {
+export function isPointInToken(x: number, y: number, token: Token, gridSize: number): boolean {
+  const width = token.gridWidth * gridSize;
+  const height = token.gridHeight * gridSize;
   return (
     x >= token.x &&
-    x <= token.x + token.width &&
+    x <= token.x + width &&
     y >= token.y &&
-    y <= token.y + token.height
+    y <= token.y + height
   );
 }
 
-export function findTokenAtPoint(x: number, y: number, tokens: Token[]): Token | null {
+export function findTokenAtPoint(x: number, y: number, tokens: Token[], gridSize: number): Token | null {
   for (let i = tokens.length - 1; i >= 0; i--) {
-    if (isPointInToken(x, y, tokens[i])) {
+    if (isPointInToken(x, y, tokens[i], gridSize)) {
       return tokens[i];
     }
   }

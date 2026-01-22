@@ -157,16 +157,18 @@ function pointInCone(
 
 export function getTokensInMeasurement(
   measurement: Measurement,
-  tokens: Token[]
+  tokens: Token[],
+  gridSize: number
 ): string[] {
   const result: string[] = [];
 
   for (const token of tokens) {
+    // Calculate pixel dimensions from grid units
     const rect: Rect = {
       x: token.x,
       y: token.y,
-      width: token.width,
-      height: token.height,
+      width: token.gridWidth * gridSize,
+      height: token.gridHeight * gridSize,
     };
 
     let intersects = false;

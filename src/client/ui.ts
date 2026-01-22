@@ -5,13 +5,13 @@ type ToolChangeHandler = (tool: Tool) => void;
 type MapUploadHandler = (file: File) => void;
 type TokenUploadHandler = (file: File) => void;
 type GridChangeHandler = (enabled: boolean, size: number) => void;
-type ScaleChangeHandler = (pixelsPerFoot: number) => void;
+type SnapChangeHandler = (enabled: boolean) => void;
 
 let onToolChange: ToolChangeHandler | null = null;
 let onMapUpload: MapUploadHandler | null = null;
 let onTokenUpload: TokenUploadHandler | null = null;
 let onGridChange: GridChangeHandler | null = null;
-let onScaleChange: ScaleChangeHandler | null = null;
+let onSnapChange: SnapChangeHandler | null = null;
 
 export function initUI(): void {
   document.querySelectorAll('.tool-btn').forEach(btn => {
@@ -65,11 +65,11 @@ export function initUI(): void {
     });
   }
 
-  const scaleInput = document.getElementById('scale-input') as HTMLInputElement;
-  if (scaleInput) {
-    scaleInput.addEventListener('change', () => {
-      if (onScaleChange) {
-        onScaleChange(parseInt(scaleInput.value) || 10);
+  const snapToggle = document.getElementById('snap-toggle') as HTMLInputElement;
+  if (snapToggle) {
+    snapToggle.addEventListener('change', () => {
+      if (onSnapChange) {
+        onSnapChange(snapToggle.checked);
       }
     });
   }
@@ -87,11 +87,11 @@ export function setActiveTool(tool: Tool): void {
 export function updateUIFromState(map: MapSettings): void {
   const gridToggle = document.getElementById('grid-toggle') as HTMLInputElement;
   const gridSizeInput = document.getElementById('grid-size') as HTMLInputElement;
-  const scaleInput = document.getElementById('scale-input') as HTMLInputElement;
+  const snapToggle = document.getElementById('snap-toggle') as HTMLInputElement;
 
   if (gridToggle) gridToggle.checked = map.gridEnabled;
   if (gridSizeInput) gridSizeInput.value = map.gridSize.toString();
-  if (scaleInput) scaleInput.value = map.pixelsPerFoot.toString();
+  if (snapToggle) snapToggle.checked = map.snapToGrid;
 }
 
 export function setOnToolChange(handler: ToolChangeHandler): void {
@@ -110,6 +110,6 @@ export function setOnGridChange(handler: GridChangeHandler): void {
   onGridChange = handler;
 }
 
-export function setOnScaleChange(handler: ScaleChangeHandler): void {
-  onScaleChange = handler;
+export function setOnSnapChange(handler: SnapChangeHandler): void {
+  onSnapChange = handler;
 }

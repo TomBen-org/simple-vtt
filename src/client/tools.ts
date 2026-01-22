@@ -1,4 +1,4 @@
-export type Tool = 'select' | 'line' | 'circle' | 'cone';
+export type Tool = 'select' | 'line' | 'circle' | 'cone' | 'grid-align';
 
 export interface ToolState {
   currentTool: Tool;

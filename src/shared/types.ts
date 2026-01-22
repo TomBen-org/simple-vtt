@@ -3,16 +3,18 @@ export interface Token {
   x: number;
   y: number;
   imageUrl: string;
-  width: number;
-  height: number;
+  gridWidth: number;   // Size in grid cells (e.g., 1 for 1x1, 2 for 2x2)
+  gridHeight: number;
   name?: string;
 }
 
 export interface MapSettings {
   backgroundUrl: string | null;
-  pixelsPerFoot: number;
   gridEnabled: boolean;
   gridSize: number;
+  gridOffsetX: number;  // Grid offset for alignment
+  gridOffsetY: number;
+  snapToGrid: boolean;  // Whether tokens snap to grid
 }
 
 export interface GameState {
@@ -35,18 +37,20 @@ export type WSMessage =
   | { type: 'token:add'; token: Token }
   | { type: 'token:move'; id: string; x: number; y: number }
   | { type: 'token:remove'; id: string }
-  | { type: 'token:resize'; id: string; width: number; height: number }
+  | { type: 'token:resize'; id: string; gridWidth: number; gridHeight: number }
   | { type: 'map:set'; backgroundUrl: string }
-  | { type: 'map:scale'; pixelsPerFoot: number }
-  | { type: 'map:grid'; enabled: boolean; size?: number }
+  | { type: 'map:grid'; enabled: boolean; size?: number; offsetX?: number; offsetY?: number }
+  | { type: 'map:snap'; enabled: boolean }
   | { type: 'measurement:update'; measurement: Measurement }
   | { type: 'measurement:clear'; playerId: string };
 
 export const DEFAULT_MAP_SETTINGS: MapSettings = {
   backgroundUrl: null,
-  pixelsPerFoot: 10,
   gridEnabled: true,
   gridSize: 50,
+  gridOffsetX: 0,
+  gridOffsetY: 0,
+  snapToGrid: true,
 };
 
 export const DEFAULT_GAME_STATE: GameState = {

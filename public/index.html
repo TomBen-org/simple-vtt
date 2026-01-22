@@ -14,6 +14,7 @@
       <button class="tool-btn" data-tool="line" title="Measure Line">Line</button>
       <button class="tool-btn" data-tool="circle" title="Measure Circle">Circle</button>
       <button class="tool-btn" data-tool="cone" title="Measure Cone">Cone</button>
+      <button class="tool-btn" data-tool="grid-align" title="Align Grid (draw over one cell)">Align</button>
     </div>
 
     <div class="toolbar-section">
@@ -34,13 +35,9 @@
         Size:
         <input type="number" id="grid-size" value="50" min="10" max="200" step="10">
       </label>
-    </div>
-
-    <div class="toolbar-section">
-      <span class="section-label">Scale</span>
       <label>
-        Pixels/ft:
-        <input type="number" id="scale-input" value="10" min="1" max="100">
+        <input type="checkbox" id="snap-toggle" checked>
+        Snap
       </label>
     </div>
   </div>

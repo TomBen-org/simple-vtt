@@ -14,11 +14,13 @@ Open http://localhost:3000 in your browser.
 
 ## Features
 
-- **Tokens**: Upload PNG images as tokens, drag to move with distance display
+- **Tokens**: Upload PNG images as tokens, drag to move with distance display (default 1x1 grid size)
+- **Token Sizes**: Tokens are sized in grid units (1x1, 2x2, etc.) and scale automatically when grid size changes
 - **Maps**: Upload background map images
-- **Scale**: Configure pixels-to-feet ratio for distance calculations
-- **Grid**: Optional grid overlay (toggleable)
-- **Measurement Tools**: Line, circle, and cone measurement tools
+- **Grid**: Optional grid overlay with configurable size and offset
+- **Grid Alignment Tool**: Draw a box over one map cell to auto-configure grid size and alignment
+- **Snap to Grid**: Toggle snap-to-grid for token movement (Ctrl temporarily inverts the setting)
+- **Measurement Tools**: Line, circle, and cone measurement tools (1 grid cell = 5 feet)
 - **Synchronized Measurements**: Measurements sync in real-time to all connected players (purple for remote, yellow for local)
 - **Token Highlighting**: Tokens touched by any measurement glow orange
 - **Real-time Sync**: All changes sync instantly across connected browsers via WebSocket
@@ -54,24 +56,24 @@ The server maintains authoritative game state. All client actions are sent to th
 
 ## Tools
 
-1. **Select** - Click tokens to select, drag to move (shows distance)
+1. **Select** - Click tokens to select, drag to move (shows distance). Snaps to grid if enabled.
 2. **Measure Line** - Click and drag to measure distances
 3. **Measure Circle** - Click center, drag for radius
 4. **Measure Cone** - Click origin, drag for 60-degree cone
+5. **Align** - Draw a box over one grid cell on the map to set grid size and offset
 
 ## Configuration
 
 - Grid size and visibility configurable in UI
-- Pixels-per-foot scale configurable in UI
+- Snap-to-grid toggle in UI (Ctrl key temporarily inverts)
+- Distance is always 5 feet per grid cell
 
 ## Planned features
-- toggle to snap tokens to grid during movement
-- grid alignment tool, where the user draws a box and the grid offset and size is set based on it
-- feet distance based on grid size, not pixels
 - garbage collect unused images
 - dragging an image into the map adds it as a token automatically
-- scale all new tokens to one grid size
-- a tokens size should be stored in grid size, not pixel size. so that a tokens size changes when I change the grid size
+- ux for tweaking for grid offset
+- use floating point for grid scale and grid offset
+- ux increasing and decreasing grid scale and grid offset should go up and down by 1, and you should be able to type fractional values
 
 ## Extra instructions for Claude
 - If necessary, update this file after implementing each feature, or having a discussion about features.

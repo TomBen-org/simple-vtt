@@ -20,12 +20,38 @@ export function loadState(): GameState {
 
   try {
     const data = fs.readFileSync(STATE_FILE, 'utf-8');
-    const parsed = JSON.parse(data) as GameState;
+    const parsed = JSON.parse(data);
+
+    // Migrate tokens from old format (width/height in pixels) to new format (gridWidth/gridHeight)
+    const gridSize = parsed.map?.gridSize || DEFAULT_GAME_STATE.map.gridSize;
+    const migratedTokens = (parsed.tokens || []).map((token: any) => {
+      // If token already has gridWidth/gridHeight, use those
+      if (token.gridWidth !== undefined && token.gridHeight !== undefined) {
+        return token;
+      }
+      // Migrate from pixel dimensions to grid units
+      const gridWidth = token.width ? Math.round(token.width / gridSize) || 1 : 1;
+      const gridHeight = token.height ? Math.round(token.height / gridSize) || 1 : 1;
+      return {
+        id: token.id,
+        x: token.x,
+        y: token.y,
+        imageUrl: token.imageUrl,
+        gridWidth,
+        gridHeight,
+        name: token.name,
+      };
+    });
+
     return {
-      tokens: parsed.tokens || [],
+      tokens: migratedTokens,
       map: {
         ...DEFAULT_GAME_STATE.map,
         ...parsed.map,
+        // Remove old pixelsPerFoot if present
+        gridOffsetX: parsed.map?.gridOffsetX ?? 0,
+        gridOffsetY: parsed.map?.gridOffsetY ?? 0,
+        snapToGrid: parsed.map?.snapToGrid ?? true,
       },
     };
   } catch (error) {

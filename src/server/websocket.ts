@@ -51,7 +51,7 @@ function handleMessage(message: WSMessage, sender: WebSocket): void {
       break;
 
     case 'token:resize':
-      if (stateManager.resizeToken(message.id, message.width, message.height)) {
+      if (stateManager.resizeToken(message.id, message.gridWidth, message.gridHeight)) {
         broadcast(message);
       }
       break;
@@ -61,13 +61,13 @@ function handleMessage(message: WSMessage, sender: WebSocket): void {
       broadcast(message);
       break;
 
-    case 'map:scale':
-      stateManager.setMapScale(message.pixelsPerFoot);
+    case 'map:grid':
+      stateManager.setGridSettings(message.enabled, message.size, message.offsetX, message.offsetY);
       broadcast(message);
       break;
 
-    case 'map:grid':
-      stateManager.setGridSettings(message.enabled, message.size);
+    case 'map:snap':
+      stateManager.setSnapToGrid(message.enabled);
       broadcast(message);
       break;
 

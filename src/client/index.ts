@@ -11,7 +11,7 @@ import {
   setOnMapUpload,
   setOnTokenUpload,
   setOnGridChange,
-  setOnScaleChange,
+  setOnSnapChange,
 } from './ui.js';
 import { createViewState, ViewState, screenToWorld, startPan, updatePan, endPan, applyZoom } from './viewState.js';
 import { getTokensInMeasurement } from './geometry.js';
@@ -44,6 +44,9 @@ const PAN_THRESHOLD = 3;
 
 // Context menu
 let contextMenuTokenId: string | null = null;
+
+// Modifier key state for snap override
+let ctrlKeyPressed = false;
 
 function init(): void {
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -92,8 +95,8 @@ function init(): void {
       case 'token:resize':
         const resizedToken = gameState.tokens.find(t => t.id === message.id);
         if (resizedToken) {
-          resizedToken.width = message.width;
-          resizedToken.height = message.height;
+          resizedToken.gridWidth = message.gridWidth;
+          resizedToken.gridHeight = message.gridHeight;
         }
         break;
 
@@ -102,16 +105,22 @@ function init(): void {
         loadBackground(message.backgroundUrl);
         break;
 
-      case 'map:scale':
-        gameState.map.pixelsPerFoot = message.pixelsPerFoot;
-        updateUIFromState(gameState.map);
-        break;
-
       case 'map:grid':
         gameState.map.gridEnabled = message.enabled;
         if (message.size !== undefined) {
           gameState.map.gridSize = message.size;
         }
+        if (message.offsetX !== undefined) {
+          gameState.map.gridOffsetX = message.offsetX;
+        }
+        if (message.offsetY !== undefined) {
+          gameState.map.gridOffsetY = message.offsetY;
+        }
+        updateUIFromState(gameState.map);
+        break;
+
+      case 'map:snap':
+        gameState.map.snapToGrid = message.enabled;
         updateUIFromState(gameState.map);
         break;
 
@@ -139,23 +148,23 @@ function init(): void {
 
     // Check local measurement
     const localMeasurement = getCurrentMeasurement(toolState);
-    if (localMeasurement && localMeasurement.tool !== 'select') {
+    if (localMeasurement && localMeasurement.tool !== 'select' && localMeasurement.tool !== 'grid-align') {
       const measurement: Measurement = {
         id: 'local',
         playerId: playerId,
-        tool: localMeasurement.tool,
+        tool: localMeasurement.tool as 'line' | 'circle' | 'cone',
         startX: localMeasurement.startX,
         startY: localMeasurement.startY,
         endX: localMeasurement.endX,
         endY: localMeasurement.endY,
       };
-      const tokenIds = getTokensInMeasurement(measurement, gameState.tokens);
+      const tokenIds = getTokensInMeasurement(measurement, gameState.tokens, gameState.map.gridSize);
       tokenIds.forEach((id) => highlightedTokenIds.add(id));
     }
 
     // Check remote measurements
     remoteMeasurements.forEach((measurement) => {
-      const tokenIds = getTokensInMeasurement(measurement, gameState.tokens);
+      const tokenIds = getTokensInMeasurement(measurement, gameState.tokens, gameState.map.gridSize);
       tokenIds.forEach((id) => highlightedTokenIds.add(id));
     });
 
@@ -187,8 +196,8 @@ function setupEventHandlers(): void {
         id: crypto.randomUUID(),
         x: 100,
         y: 100,
-        width: 50,
-        height: 50,
+        gridWidth: 1,  // Default to 1x1 grid size
+        gridHeight: 1,
         imageUrl: url,
         name: file.name.replace(/\.[^/.]+$/, ''),
       };
@@ -202,8 +211,8 @@ function setupEventHandlers(): void {
     wsClient.setGrid(enabled, size);
   });
 
-  setOnScaleChange((pixelsPerFoot: number) => {
-    wsClient.setMapScale(pixelsPerFoot);
+  setOnSnapChange((enabled: boolean) => {
+    wsClient.setSnapToGrid(enabled);
   });
 }
 
@@ -230,13 +239,15 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const y = world.y;
 
     if (toolState.currentTool === 'select') {
-      const token = findTokenAtPoint(x, y, gameState.tokens);
+      const token = findTokenAtPoint(x, y, gameState.tokens, gameState.map.gridSize);
       if (token) {
         selectedTokenId = token.id;
         draggedToken = token;
         dragOffsetX = x - token.x;
         dragOffsetY = y - token.y;
-        startDrag(toolState, token.x + token.width / 2, token.y + token.height / 2);
+        const tokenWidth = token.gridWidth * gameState.map.gridSize;
+        const tokenHeight = token.gridHeight * gameState.map.gridSize;
+        startDrag(toolState, token.x + tokenWidth / 2, token.y + tokenHeight / 2);
       } else {
         selectedTokenId = null;
         draggedToken = null;
@@ -269,22 +280,37 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
 
     if (toolState.isDragging) {
       if (toolState.currentTool === 'select' && draggedToken) {
-        updateDrag(toolState, draggedToken.x + draggedToken.width / 2, draggedToken.y + draggedToken.height / 2);
-        draggedToken.x = x - dragOffsetX;
-        draggedToken.y = y - dragOffsetY;
-        updateDrag(toolState, draggedToken.x + draggedToken.width / 2, draggedToken.y + draggedToken.height / 2);
+        const gridSize = gameState.map.gridSize;
+        const tokenWidth = draggedToken.gridWidth * gridSize;
+        const tokenHeight = draggedToken.gridHeight * gridSize;
+
+        let newX = x - dragOffsetX;
+        let newY = y - dragOffsetY;
+
+        // Snap to grid: Ctrl inverts the snap setting
+        const shouldSnap = ctrlKeyPressed ? !gameState.map.snapToGrid : gameState.map.snapToGrid;
+        if (shouldSnap) {
+          const offsetX = gameState.map.gridOffsetX || 0;
+          const offsetY = gameState.map.gridOffsetY || 0;
+          newX = Math.round((newX - offsetX) / gridSize) * gridSize + offsetX;
+          newY = Math.round((newY - offsetY) / gridSize) * gridSize + offsetY;
+        }
+
+        draggedToken.x = newX;
+        draggedToken.y = newY;
+        updateDrag(toolState, draggedToken.x + tokenWidth / 2, draggedToken.y + tokenHeight / 2);
       } else {
         updateDrag(toolState, x, y);
 
         // Send measurement update to other players (throttled)
-        if (toolState.currentTool !== 'select') {
+        if (toolState.currentTool !== 'select' && toolState.currentTool !== 'grid-align') {
           const now = Date.now();
           if (now - lastMeasurementUpdate >= MEASUREMENT_THROTTLE_MS) {
             lastMeasurementUpdate = now;
             const measurement: Measurement = {
               id: crypto.randomUUID(),
               playerId: playerId,
-              tool: toolState.currentTool,
+              tool: toolState.currentTool as 'line' | 'circle' | 'cone',
               startX: toolState.startX,
               startY: toolState.startY,
               endX: toolState.endX,
@@ -308,7 +334,23 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     if (toolState.currentTool === 'select' && draggedToken) {
       wsClient.moveToken(draggedToken.id, draggedToken.x, draggedToken.y);
       draggedToken = null;
-    } else if (toolState.currentTool !== 'select' && toolState.isDragging) {
+    } else if (toolState.currentTool === 'grid-align' && toolState.isDragging) {
+      // Grid alignment tool: set grid size and offset based on drawn box
+      const width = Math.abs(toolState.endX - toolState.startX);
+      const height = Math.abs(toolState.endY - toolState.startY);
+      const minX = Math.min(toolState.startX, toolState.endX);
+      const minY = Math.min(toolState.startY, toolState.endY);
+
+      if (width > 10 && height > 10) {
+        // Use average of width and height as grid size
+        const newGridSize = Math.round((width + height) / 2);
+        // Calculate offset so grid aligns with the drawn box corner
+        const offsetX = minX % newGridSize;
+        const offsetY = minY % newGridSize;
+
+        wsClient.setGrid(gameState.map.gridEnabled, newGridSize, offsetX, offsetY);
+      }
+    } else if (toolState.currentTool !== 'select' && toolState.currentTool !== 'grid-align' && toolState.isDragging) {
       // Clear measurement from other players' views
       wsClient.clearMeasurement(playerId);
     }
@@ -328,7 +370,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const screenY = e.clientY - rect.top;
     const world = screenToWorld(viewState, screenX, screenY);
 
-    const token = findTokenAtPoint(world.x, world.y, gameState.tokens);
+    const token = findTokenAtPoint(world.x, world.y, gameState.tokens, gameState.map.gridSize);
     if (token) {
       showContextMenu(e.clientX, e.clientY, token.id);
     } else {
@@ -344,6 +386,19 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const cursorY = e.clientY - rect.top;
     applyZoom(viewState, e.deltaY, cursorX, cursorY);
   }, { passive: false });
+
+  // Track Ctrl key for snap override
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Control') {
+      ctrlKeyPressed = true;
+    }
+  });
+
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'Control') {
+      ctrlKeyPressed = false;
+    }
+  });
 }
 
 function showContextMenu(x: number, y: number, tokenId: string): void {
@@ -391,10 +446,8 @@ function setupContextMenu(): void {
       hideContextMenu();
     } else if (action === 'resize' && contextMenuTokenId) {
       const size = parseInt(target.dataset.size || '1', 10);
-      const gridSize = gameState.map.gridSize;
-      const newSize = gridSize * size;
-
-      wsClient.resizeToken(contextMenuTokenId, newSize, newSize);
+      // Size is in grid units now (1, 2, 3, 4)
+      wsClient.resizeToken(contextMenuTokenId, size, size);
       hideContextMenu();
     }
   });
