@@ -21,6 +21,7 @@ Open http://localhost:3000 in your browser.
 - **Measurement Tools**: Line, circle, and cone measurement tools
 - **Real-time Sync**: All changes sync instantly across connected browsers via WebSocket
 - **No Login**: All users have full access to all features
+- **Pan and Zoom**: using right mouse button hold and scroll wheel
 
 ## Tech Stack
 
@@ -61,7 +62,6 @@ The server maintains authoritative game state. All client actions are sent to th
 - Pixels-per-foot scale configurable in UI
 
 ## Planned features
-- Pan and Zoom using right mouse button hold and scroll wheel
 - synchronise measuring tools so other players can see them
 - highlight tokens that are touched by a line, cone or circle measurement
 - toggle to snap tokens to grid during movement
@@ -71,3 +71,6 @@ The server maintains authoritative game state. All client actions are sent to th
 - dragging an image into the map adds it as a token automatically
 - scale all new tokens to one grid size
 - a right click menu on tokens to increase/decrease size (1x1grid, 2x2grid, ect..), and an option to delete the token.
+
+## Extra instructions for Claude
+- If necessary, update this file after implementing each feature, or having a discussion about features.
