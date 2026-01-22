@@ -1,6 +1,6 @@
 import { GameState, Token, Measurement, Scene, createDefaultGameState } from '../shared/types.js';
 import { wsClient } from './websocket.js';
-import { initCanvas, render, loadBackground, getCanvas, resizeCanvas, clearBackground } from './canvas.js';
+import { initCanvas, render, loadBackground, getCanvas, resizeCanvas, clearBackground, DragDropState } from './canvas.js';
 import { createToolState, setTool, startDrag, updateDrag, endDrag, Tool, ToolState, getCurrentMeasurement } from './tools.js';
 import { findTokenAtPoint, uploadImage, loadTokenImage } from './tokens.js';
 import {
@@ -21,6 +21,18 @@ import {
 import { createViewState, ViewState, screenToWorld, startPan, updatePan, endPan, applyZoom } from './viewState.js';
 import { getTokensInMeasurement } from './geometry.js';
 
+// UUID generator that uses crypto.randomUUID if available, falls back for insecure contexts (HTTP)
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 let gameState: GameState = createDefaultGameState();
 
 function getActiveScene(): Scene | undefined {
@@ -34,7 +46,7 @@ let dragOffsetX = 0;
 let dragOffsetY = 0;
 
 // Player ID for measurement sync
-const playerId = crypto.randomUUID();
+const playerId = generateUUID();
 
 // Remote measurements from other players
 const remoteMeasurements: Map<string, Measurement> = new Map();
@@ -60,6 +72,30 @@ let ctrlKeyPressed = false;
 // Client-side snap to grid setting (not synced)
 let snapToGrid = true;
 
+// Drag and drop state for file uploads
+let dragDropState: DragDropState | null = null;
+
+// Valid image types for drag-and-drop
+const VALID_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+
+function isValidImageFile(file: File): boolean {
+  return VALID_IMAGE_TYPES.includes(file.type);
+}
+
+function calculateTokenPositions(dropX: number, dropY: number, count: number, gridSize: number): {x: number, y: number}[] {
+  const positions: {x: number, y: number}[] = [];
+  const cols = Math.min(count, 2); // Max 2 columns
+  for (let i = 0; i < count; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    positions.push({
+      x: dropX + col * gridSize,
+      y: dropY + row * gridSize
+    });
+  }
+  return positions;
+}
+
 function init(): void {
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
   if (!canvas) {
@@ -72,6 +108,7 @@ function init(): void {
   setupEventHandlers();
   setupCanvasEvents(canvas);
   setupContextMenu();
+  setupDragAndDrop(canvas);
 
   wsClient.onMessage((message) => {
     switch (message.type) {
@@ -240,7 +277,7 @@ function init(): void {
       });
     }
 
-    render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds);
+    render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds, dragDropState);
     requestAnimationFrame(renderLoop);
   }
   renderLoop();
@@ -275,7 +312,7 @@ function setupEventHandlers(): void {
     try {
       const url = await uploadImage(file);
       const token: Token = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         x: 100,
         y: 100,
         gridWidth: 1,  // Default to 1x1 grid size
@@ -412,7 +449,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
           if (now - lastMeasurementUpdate >= MEASUREMENT_THROTTLE_MS) {
             lastMeasurementUpdate = now;
             const measurement: Measurement = {
-              id: crypto.randomUUID(),
+              id: generateUUID(),
               playerId: playerId,
               tool: toolState.currentTool as 'line' | 'circle' | 'cone',
               startX: toolState.startX,
@@ -442,18 +479,28 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
       // Grid alignment tool: set grid size and offset based on drawn box
       const width = Math.abs(toolState.endX - toolState.startX);
       const height = Math.abs(toolState.endY - toolState.startY);
-      const minX = Math.min(toolState.startX, toolState.endX);
-      const minY = Math.min(toolState.startY, toolState.endY);
 
       if (width > 10 && height > 10) {
-        // Use average of width and height as grid size
-        const newGridSize = Math.round((width + height) / 2);
-        // Calculate offset so grid aligns with the drawn box corner
-        const offsetX = minX % newGridSize;
-        const offsetY = minY % newGridSize;
+        // Use the longest side for calculation (square grid)
+        const longestSide = Math.max(width, height);
+        const dimension = width >= height ? 'width' : 'height';
 
-        const activeSceneMouseUp = getActiveScene();
-        wsClient.setGrid(activeSceneMouseUp?.map.gridEnabled ?? true, newGridSize, offsetX, offsetY);
+        // Ask user how many cells were selected
+        const input = prompt(`How many grid cells did you select along the ${dimension}?`, '1');
+        if (input !== null) {
+          const cellCount = parseFloat(input);
+          if (!isNaN(cellCount) && cellCount > 0) {
+            // Calculate grid size from selection
+            const newGridSize = longestSide / cellCount;
+
+            // Use starting point for offset calculation
+            const offsetX = toolState.startX % newGridSize;
+            const offsetY = toolState.startY % newGridSize;
+
+            const activeSceneMouseUp = getActiveScene();
+            wsClient.setGrid(activeSceneMouseUp?.map.gridEnabled ?? true, newGridSize, offsetX, offsetY);
+          }
+        }
       }
     } else if (toolState.currentTool !== 'move' && toolState.currentTool !== 'grid-align' && toolState.isDragging) {
       // Clear measurement from other players' views
@@ -573,6 +620,127 @@ function setupContextMenu(): void {
     if (e.key === 'Escape') {
       hideContextMenu();
     }
+  });
+}
+
+function setupDragAndDrop(canvas: HTMLCanvasElement): void {
+  // Prevent browser from loading dropped images anywhere on the page
+  document.addEventListener('dragover', (e) => {
+    e.preventDefault();
+  });
+  document.addEventListener('drop', (e) => {
+    e.preventDefault();
+  });
+
+  canvas.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  canvas.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Check if we have valid image files
+    const items = e.dataTransfer?.items;
+    if (!items) return;
+
+    let validCount = 0;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].kind === 'file' && VALID_IMAGE_TYPES.includes(items[i].type)) {
+        validCount++;
+      }
+    }
+
+    if (validCount > 0) {
+      const rect = canvas.getBoundingClientRect();
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+      const world = screenToWorld(viewState, screenX, screenY);
+
+      dragDropState = {
+        active: true,
+        x: world.x,
+        y: world.y,
+        fileCount: validCount
+      };
+      e.dataTransfer.dropEffect = 'copy';
+    } else {
+      dragDropState = null;
+      e.dataTransfer!.dropEffect = 'none';
+    }
+  });
+
+  canvas.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Only clear if we're actually leaving the canvas (not entering a child element)
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+      dragDropState = null;
+    }
+  });
+
+  canvas.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) {
+      dragDropState = null;
+      return;
+    }
+
+    // Filter to valid image files
+    const validFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      if (isValidImageFile(files[i])) {
+        validFiles.push(files[i]);
+      }
+    }
+
+    if (validFiles.length === 0) {
+      dragDropState = null;
+      return;
+    }
+
+    // Get drop position in world coordinates
+    const rect = canvas.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const world = screenToWorld(viewState, screenX, screenY);
+
+    // Calculate positions for each token
+    const activeSceneDrop = getActiveScene();
+    const gridSize = activeSceneDrop?.map.gridSize ?? 50;
+    const positions = calculateTokenPositions(world.x, world.y, validFiles.length, gridSize);
+
+    // Upload each file and create tokens
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      const position = positions[i];
+
+      try {
+        const url = await uploadImage(file);
+        const token: Token = {
+          id: generateUUID(),
+          x: position.x,
+          y: position.y,
+          gridWidth: 1,
+          gridHeight: 1,
+          imageUrl: url,
+          name: file.name.replace(/\.[^/.]+$/, ''),
+        };
+        wsClient.addToken(token);
+      } catch (error) {
+        console.error('Failed to upload token:', error);
+      }
+    }
+
+    dragDropState = null;
   });
 }
 

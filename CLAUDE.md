@@ -18,7 +18,7 @@ Open http://localhost:3000 in your browser.
 - **Token Sizes**: Tokens are sized in grid units (1x1, 2x2, etc.) and scale automatically when grid size changes
 - **Maps**: Upload background map images
 - **Grid**: Optional grid overlay with configurable size and offset
-- **Grid Alignment Tool**: Draw a box over one map cell to auto-configure grid size and alignment
+- **Grid Alignment Tool**: Draw a box over multiple map cells, then enter the cell count to auto-configure grid size and alignment
 - **Snap to Grid**: Toggle snap-to-grid for token movement (Ctrl temporarily inverts the setting)
 - **Measurement Tools**: Line, circle, and cone measurement tools (1 grid cell = 5 feet)
 - **Synchronized Measurements**: Measurements sync in real-time to all connected players (purple for remote, yellow for local)
@@ -28,6 +28,7 @@ Open http://localhost:3000 in your browser.
 - **Pan and Zoom**: using right mouse button hold and scroll wheel
 - **Token Context Menu**: Right-click tokens to resize (1x1, 2x2, 3x3, 4x4 grid) or delete
 - **Multiple Scenes**: Support for multiple scenes, each with its own map, tokens, and grid settings. All clients view the same active scene (shared view).
+- **Drag-and-Drop Tokens**: Drag image files (PNG, JPEG, GIF, WebP) onto the canvas to create tokens at the drop position. Multiple files are arranged in a grid pattern.
 
 ## Tech Stack
 
@@ -61,7 +62,7 @@ The server maintains authoritative game state. All client actions are sent to th
 2. **Measure Line** - Click and drag to measure distances
 3. **Measure Circle** - Click center, drag for radius
 4. **Measure Cone** - Click origin, drag for 60-degree cone
-5. **Align** - In the Grid settings panel. Draw a box over one grid cell on the map to set grid size and offset.
+5. **Align** - In the Grid settings panel. Draw a box over multiple grid cells, then enter the cell count along the longest side. Uses the starting corner for offset alignment.
 
 ## Configuration
 
@@ -72,9 +73,7 @@ The server maintains authoritative game state. All client actions are sent to th
 
 ## Planned features
 - garbage collect unused images
-- dragging an image into the map adds it as a token automatically
 - moving tokens between scenes
-- improve the grid alignment tool by having the user bound box more than one tile and then enter how many tiles were bound, to improve accuracy
 
 ## Extra instructions for Claude
 - If necessary, update this file after implementing each feature, or having a discussion about features.
