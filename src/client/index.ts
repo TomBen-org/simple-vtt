@@ -42,6 +42,9 @@ let isRightMouseDown = false;
 let hasPanned = false;
 const PAN_THRESHOLD = 3;
 
+// Context menu
+let contextMenuTokenId: string | null = null;
+
 function init(): void {
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
   if (!canvas) {
@@ -53,6 +56,7 @@ function init(): void {
   initUI();
   setupEventHandlers();
   setupCanvasEvents(canvas);
+  setupContextMenu();
 
   wsClient.onMessage((message) => {
     switch (message.type) {
@@ -82,6 +86,14 @@ function init(): void {
         gameState.tokens = gameState.tokens.filter(t => t.id !== message.id);
         if (selectedTokenId === message.id) {
           selectedTokenId = null;
+        }
+        break;
+
+      case 'token:resize':
+        const resizedToken = gameState.tokens.find(t => t.id === message.id);
+        if (resizedToken) {
+          resizedToken.width = message.width;
+          resizedToken.height = message.height;
         }
         break;
 
@@ -197,6 +209,9 @@ function setupEventHandlers(): void {
 
 function setupCanvasEvents(canvas: HTMLCanvasElement): void {
   canvas.addEventListener('mousedown', (e) => {
+    // Hide context menu on any click
+    hideContextMenu();
+
     const rect = canvas.getBoundingClientRect();
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
@@ -315,9 +330,9 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
 
     const token = findTokenAtPoint(world.x, world.y, gameState.tokens);
     if (token) {
-      if (confirm(`Delete token "${token.name || 'Unnamed'}"?`)) {
-        wsClient.removeToken(token.id);
-      }
+      showContextMenu(e.clientX, e.clientY, token.id);
+    } else {
+      hideContextMenu();
     }
   });
 
@@ -329,6 +344,75 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const cursorY = e.clientY - rect.top;
     applyZoom(viewState, e.deltaY, cursorX, cursorY);
   }, { passive: false });
+}
+
+function showContextMenu(x: number, y: number, tokenId: string): void {
+  const menu = document.getElementById('context-menu');
+  if (!menu) return;
+
+  contextMenuTokenId = tokenId;
+
+  // Position the menu
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+  menu.classList.remove('hidden');
+
+  // Adjust if menu goes off screen
+  const rect = menu.getBoundingClientRect();
+  if (rect.right > window.innerWidth) {
+    menu.style.left = `${x - rect.width}px`;
+  }
+  if (rect.bottom > window.innerHeight) {
+    menu.style.top = `${y - rect.height}px`;
+  }
+}
+
+function hideContextMenu(): void {
+  const menu = document.getElementById('context-menu');
+  if (menu) {
+    menu.classList.add('hidden');
+  }
+  contextMenuTokenId = null;
+}
+
+function setupContextMenu(): void {
+  const menu = document.getElementById('context-menu');
+  if (!menu) return;
+
+  // Handle menu item clicks
+  menu.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (!target.matches('.context-menu-item')) return;
+
+    const action = target.dataset.action;
+
+    if (action === 'delete' && contextMenuTokenId) {
+      wsClient.removeToken(contextMenuTokenId);
+      hideContextMenu();
+    } else if (action === 'resize' && contextMenuTokenId) {
+      const size = parseInt(target.dataset.size || '1', 10);
+      const gridSize = gameState.map.gridSize;
+      const newSize = gridSize * size;
+
+      wsClient.resizeToken(contextMenuTokenId, newSize, newSize);
+      hideContextMenu();
+    }
+  });
+
+  // Close menu when clicking elsewhere
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('context-menu');
+    if (menu && !menu.contains(e.target as Node)) {
+      hideContextMenu();
+    }
+  });
+
+  // Close menu on escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      hideContextMenu();
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);

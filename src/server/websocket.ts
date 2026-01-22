@@ -50,6 +50,12 @@ function handleMessage(message: WSMessage, sender: WebSocket): void {
       }
       break;
 
+    case 'token:resize':
+      if (stateManager.resizeToken(message.id, message.width, message.height)) {
+        broadcast(message);
+      }
+      break;
+
     case 'map:set':
       stateManager.setMapBackground(message.backgroundUrl);
       broadcast(message);

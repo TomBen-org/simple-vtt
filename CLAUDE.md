@@ -24,6 +24,7 @@ Open http://localhost:3000 in your browser.
 - **Real-time Sync**: All changes sync instantly across connected browsers via WebSocket
 - **No Login**: All users have full access to all features
 - **Pan and Zoom**: using right mouse button hold and scroll wheel
+- **Token Context Menu**: Right-click tokens to resize (1x1, 2x2, 3x3, 4x4 grid) or delete
 
 ## Tech Stack
 
@@ -70,7 +71,8 @@ The server maintains authoritative game state. All client actions are sent to th
 - garbage collect unused images
 - dragging an image into the map adds it as a token automatically
 - scale all new tokens to one grid size
-- a right click menu on tokens to increase/decrease size (1x1grid, 2x2grid, ect..), and an option to delete the token.
+- a tokens size should be stored in grid size, not pixel size. so that a tokens size changes when I change the grid size
 
 ## Extra instructions for Claude
 - If necessary, update this file after implementing each feature, or having a discussion about features.
+- Always ask questions in planning mode before building your implementation strategy

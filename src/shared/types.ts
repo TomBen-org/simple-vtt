@@ -35,6 +35,7 @@ export type WSMessage =
   | { type: 'token:add'; token: Token }
   | { type: 'token:move'; id: string; x: number; y: number }
   | { type: 'token:remove'; id: string }
+  | { type: 'token:resize'; id: string; width: number; height: number }
   | { type: 'map:set'; backgroundUrl: string }
   | { type: 'map:scale'; pixelsPerFoot: number }
   | { type: 'map:grid'; enabled: boolean; size?: number }

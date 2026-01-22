@@ -62,6 +62,10 @@ class WebSocketClient {
     this.send({ type: 'token:remove', id });
   }
 
+  resizeToken(id: string, width: number, height: number): void {
+    this.send({ type: 'token:resize', id, width, height });
+  }
+
   setMapBackground(backgroundUrl: string): void {
     this.send({ type: 'map:set', backgroundUrl });
   }

@@ -47,6 +47,19 @@
 
   <canvas id="game-canvas"></canvas>
 
+  <div id="context-menu" class="context-menu hidden">
+    <div class="context-menu-header">Token</div>
+    <div class="context-menu-section">
+      <div class="context-menu-label">Size</div>
+      <button class="context-menu-item" data-action="resize" data-size="1">1x1</button>
+      <button class="context-menu-item" data-action="resize" data-size="2">2x2</button>
+      <button class="context-menu-item" data-action="resize" data-size="3">3x3</button>
+      <button class="context-menu-item" data-action="resize" data-size="4">4x4</button>
+    </div>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item danger" data-action="delete">Delete</button>
+  </div>
+
   <script type="module" src="/dist/client/client/index.js"></script>
 </body>
 </html>

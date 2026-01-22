@@ -93,3 +93,71 @@ label {
 #game-canvas.grabbing {
   cursor: grabbing;
 }
+
+/* Context Menu */
+.context-menu {
+  position: fixed;
+  background: #1a1a2e;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 8px 0;
+  min-width: 140px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+}
+
+.context-menu.hidden {
+  display: none;
+}
+
+.context-menu-header {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  border-bottom: 1px solid #333;
+  margin-bottom: 4px;
+}
+
+.context-menu-section {
+  padding: 4px 0;
+}
+
+.context-menu-label {
+  padding: 4px 12px;
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: #ddd;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.context-menu-item:hover {
+  background: #2a2a4e;
+}
+
+.context-menu-item.danger {
+  color: #ff6b6b;
+}
+
+.context-menu-item.danger:hover {
+  background: #3a2a2e;
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: #333;
+  margin: 4px 0;
+}

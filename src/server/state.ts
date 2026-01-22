@@ -39,6 +39,17 @@ class StateManager {
     return false;
   }
 
+  resizeToken(id: string, width: number, height: number): boolean {
+    const token = this.state.tokens.find(t => t.id === id);
+    if (token) {
+      token.width = width;
+      token.height = height;
+      this.persist();
+      return true;
+    }
+    return false;
+  }
+
   setMapBackground(backgroundUrl: string): void {
     this.state.map.backgroundUrl = backgroundUrl;
     this.persist();
