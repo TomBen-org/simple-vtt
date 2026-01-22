@@ -1,11 +1,12 @@
 import { GameState, Token, MapSettings, Measurement } from '../shared/types.js';
-import { getTokenImage, loadTokenImage } from './tokens.js';
+import { getTokenImage, getTokenMipmap, loadTokenImage } from './tokens.js';
 import { ToolState, getCurrentMeasurement } from './tools.js';
 import { ViewState } from './viewState.js';
+import { generateMipmaps, selectMipmap } from './mipmaps.js';
 
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
-let backgroundImage: HTMLImageElement | null = null;
+let backgroundMipmaps: HTMLCanvasElement[] | null = null;
 
 export function initCanvas(canvasElement: HTMLCanvasElement): void {
   canvas = canvasElement;
@@ -35,7 +36,7 @@ export function loadBackground(url: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
-      backgroundImage = img;
+      backgroundMipmaps = generateMipmaps(img);
       resolve();
     };
     img.onerror = reject;
@@ -61,8 +62,13 @@ export function render(
   ctx.translate(viewState.panX, viewState.panY);
   ctx.scale(viewState.zoom, viewState.zoom);
 
-  if (backgroundImage) {
-    ctx.drawImage(backgroundImage, 0, 0);
+  if (backgroundMipmaps) {
+    const originalWidth = backgroundMipmaps[0].width;
+    const originalHeight = backgroundMipmaps[0].height;
+    const targetWidth = originalWidth * viewState.zoom;
+    const targetHeight = originalHeight * viewState.zoom;
+    const mipmap = selectMipmap(backgroundMipmaps, targetWidth, targetHeight);
+    ctx.drawImage(mipmap, 0, 0, originalWidth, originalHeight);
   }
 
   if (state.map.gridEnabled) {
@@ -70,7 +76,7 @@ export function render(
   }
 
   state.tokens.forEach(token => {
-    drawToken(token, token.id === selectedTokenId, highlightedTokenIds.has(token.id), state.map.gridSize);
+    drawToken(token, token.id === selectedTokenId, highlightedTokenIds.has(token.id), state.map.gridSize, viewState);
   });
 
   // Draw local measurement
@@ -121,12 +127,17 @@ function drawGrid(map: MapSettings, viewState: ViewState): void {
   }
 }
 
-function drawToken(token: Token, selected: boolean, highlighted: boolean, gridSize: number): void {
-  const img = getTokenImage(token.imageUrl);
-
+function drawToken(token: Token, selected: boolean, highlighted: boolean, gridSize: number, viewState: ViewState): void {
   // Calculate pixel dimensions from grid units
   const width = token.gridWidth * gridSize;
   const height = token.gridHeight * gridSize;
+
+  // Calculate target pixel size accounting for zoom
+  const pixelWidth = width * viewState.zoom;
+  const pixelHeight = height * viewState.zoom;
+
+  // Get the appropriate mipmap for this zoom level
+  const mipmap = getTokenMipmap(token.imageUrl, pixelWidth, pixelHeight);
 
   // Draw highlight glow if token is touched by measurement
   if (highlighted) {
@@ -138,8 +149,8 @@ function drawToken(token: Token, selected: boolean, highlighted: boolean, gridSi
     ctx.restore();
   }
 
-  if (img) {
-    ctx.drawImage(img, token.x, token.y, width, height);
+  if (mipmap) {
+    ctx.drawImage(mipmap, token.x, token.y, width, height);
   } else {
     ctx.fillStyle = '#666';
     ctx.fillRect(token.x, token.y, width, height);

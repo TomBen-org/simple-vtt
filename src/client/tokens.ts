@@ -1,27 +1,36 @@
 import { Token } from '../shared/types.js';
+import { generateMipmaps, selectMipmap } from './mipmaps.js';
 
-const tokenImages: Map<string, HTMLImageElement> = new Map();
+const tokenMipmaps: Map<string, HTMLCanvasElement[]> = new Map();
 
-export function loadTokenImage(token: Token): Promise<HTMLImageElement> {
+export function loadTokenImage(token: Token): Promise<HTMLCanvasElement[]> {
   return new Promise((resolve, reject) => {
-    const existing = tokenImages.get(token.imageUrl);
-    if (existing && existing.complete) {
+    const existing = tokenMipmaps.get(token.imageUrl);
+    if (existing) {
       resolve(existing);
       return;
     }
 
     const img = new Image();
     img.onload = () => {
-      tokenImages.set(token.imageUrl, img);
-      resolve(img);
+      const mipmaps = generateMipmaps(img);
+      tokenMipmaps.set(token.imageUrl, mipmaps);
+      resolve(mipmaps);
     };
     img.onerror = reject;
     img.src = token.imageUrl;
   });
 }
 
-export function getTokenImage(imageUrl: string): HTMLImageElement | undefined {
-  return tokenImages.get(imageUrl);
+export function getTokenImage(imageUrl: string): HTMLCanvasElement | undefined {
+  const mipmaps = tokenMipmaps.get(imageUrl);
+  return mipmaps ? mipmaps[0] : undefined;
+}
+
+export function getTokenMipmap(imageUrl: string, targetWidth: number, targetHeight: number): HTMLCanvasElement | undefined {
+  const mipmaps = tokenMipmaps.get(imageUrl);
+  if (!mipmaps) return undefined;
+  return selectMipmap(mipmaps, targetWidth, targetHeight);
 }
 
 export function isPointInToken(x: number, y: number, token: Token, gridSize: number): boolean {
