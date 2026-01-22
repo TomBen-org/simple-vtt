@@ -20,6 +20,16 @@ export interface GameState {
   map: MapSettings;
 }
 
+export interface Measurement {
+  id: string;
+  playerId: string;
+  tool: 'line' | 'circle' | 'cone';
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
+
 export type WSMessage =
   | { type: 'sync'; state: GameState }
   | { type: 'token:add'; token: Token }
@@ -27,7 +37,9 @@ export type WSMessage =
   | { type: 'token:remove'; id: string }
   | { type: 'map:set'; backgroundUrl: string }
   | { type: 'map:scale'; pixelsPerFoot: number }
-  | { type: 'map:grid'; enabled: boolean; size?: number };
+  | { type: 'map:grid'; enabled: boolean; size?: number }
+  | { type: 'measurement:update'; measurement: Measurement }
+  | { type: 'measurement:clear'; playerId: string };
 
 export const DEFAULT_MAP_SETTINGS: MapSettings = {
   backgroundUrl: null,

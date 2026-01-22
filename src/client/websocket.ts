@@ -1,4 +1,4 @@
-import { WSMessage, GameState, Token } from '../shared/types.js';
+import { WSMessage, GameState, Token, Measurement } from '../shared/types.js';
 
 type MessageHandler = (message: WSMessage) => void;
 
@@ -72,6 +72,14 @@ class WebSocketClient {
 
   setGrid(enabled: boolean, size?: number): void {
     this.send({ type: 'map:grid', enabled, size });
+  }
+
+  updateMeasurement(measurement: Measurement): void {
+    this.send({ type: 'measurement:update', measurement });
+  }
+
+  clearMeasurement(playerId: string): void {
+    this.send({ type: 'measurement:clear', playerId });
   }
 }
 

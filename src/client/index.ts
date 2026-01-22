@@ -1,7 +1,7 @@
-import { GameState, Token, DEFAULT_GAME_STATE } from '../shared/types.js';
+import { GameState, Token, Measurement, DEFAULT_GAME_STATE } from '../shared/types.js';
 import { wsClient } from './websocket.js';
 import { initCanvas, render, loadBackground, getCanvas, resizeCanvas } from './canvas.js';
-import { createToolState, setTool, startDrag, updateDrag, endDrag, Tool, ToolState } from './tools.js';
+import { createToolState, setTool, startDrag, updateDrag, endDrag, Tool, ToolState, getCurrentMeasurement } from './tools.js';
 import { findTokenAtPoint, uploadImage, loadTokenImage } from './tokens.js';
 import {
   initUI,
@@ -14,6 +14,7 @@ import {
   setOnScaleChange,
 } from './ui.js';
 import { createViewState, ViewState, screenToWorld, startPan, updatePan, endPan, applyZoom } from './viewState.js';
+import { getTokensInMeasurement } from './geometry.js';
 
 let gameState: GameState = { ...DEFAULT_GAME_STATE, tokens: [], map: { ...DEFAULT_GAME_STATE.map } };
 let toolState: ToolState = createToolState();
@@ -22,6 +23,19 @@ let selectedTokenId: string | null = null;
 let draggedToken: Token | null = null;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
+
+// Player ID for measurement sync
+const playerId = crypto.randomUUID();
+
+// Remote measurements from other players
+const remoteMeasurements: Map<string, Measurement> = new Map();
+
+// Highlighted tokens (touched by any measurement)
+let highlightedTokenIds: Set<string> = new Set();
+
+// Throttle measurement updates
+let lastMeasurementUpdate = 0;
+const MEASUREMENT_THROTTLE_MS = 50;
 
 // Pan tracking
 let isRightMouseDown = false;
@@ -88,13 +102,52 @@ function init(): void {
         }
         updateUIFromState(gameState.map);
         break;
+
+      case 'measurement:update':
+        // Only store measurements from other players
+        if (message.measurement.playerId !== playerId) {
+          remoteMeasurements.set(message.measurement.playerId, message.measurement);
+        }
+        break;
+
+      case 'measurement:clear':
+        // Only handle clears from other players
+        if (message.playerId !== playerId) {
+          remoteMeasurements.delete(message.playerId);
+        }
+        break;
     }
   });
 
   wsClient.connect();
 
   function renderLoop(): void {
-    render(gameState, toolState, selectedTokenId, viewState);
+    // Calculate highlighted tokens from all active measurements
+    highlightedTokenIds = new Set<string>();
+
+    // Check local measurement
+    const localMeasurement = getCurrentMeasurement(toolState);
+    if (localMeasurement && localMeasurement.tool !== 'select') {
+      const measurement: Measurement = {
+        id: 'local',
+        playerId: playerId,
+        tool: localMeasurement.tool,
+        startX: localMeasurement.startX,
+        startY: localMeasurement.startY,
+        endX: localMeasurement.endX,
+        endY: localMeasurement.endY,
+      };
+      const tokenIds = getTokensInMeasurement(measurement, gameState.tokens);
+      tokenIds.forEach((id) => highlightedTokenIds.add(id));
+    }
+
+    // Check remote measurements
+    remoteMeasurements.forEach((measurement) => {
+      const tokenIds = getTokensInMeasurement(measurement, gameState.tokens);
+      tokenIds.forEach((id) => highlightedTokenIds.add(id));
+    });
+
+    render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds);
     requestAnimationFrame(renderLoop);
   }
   renderLoop();
@@ -207,6 +260,24 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
         updateDrag(toolState, draggedToken.x + draggedToken.width / 2, draggedToken.y + draggedToken.height / 2);
       } else {
         updateDrag(toolState, x, y);
+
+        // Send measurement update to other players (throttled)
+        if (toolState.currentTool !== 'select') {
+          const now = Date.now();
+          if (now - lastMeasurementUpdate >= MEASUREMENT_THROTTLE_MS) {
+            lastMeasurementUpdate = now;
+            const measurement: Measurement = {
+              id: crypto.randomUUID(),
+              playerId: playerId,
+              tool: toolState.currentTool,
+              startX: toolState.startX,
+              startY: toolState.startY,
+              endX: toolState.endX,
+              endY: toolState.endY,
+            };
+            wsClient.updateMeasurement(measurement);
+          }
+        }
       }
     }
   });
@@ -222,6 +293,9 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     if (toolState.currentTool === 'select' && draggedToken) {
       wsClient.moveToken(draggedToken.id, draggedToken.x, draggedToken.y);
       draggedToken = null;
+    } else if (toolState.currentTool !== 'select' && toolState.isDragging) {
+      // Clear measurement from other players' views
+      wsClient.clearMeasurement(playerId);
     }
     endDrag(toolState);
   });

@@ -19,6 +19,8 @@ Open http://localhost:3000 in your browser.
 - **Scale**: Configure pixels-to-feet ratio for distance calculations
 - **Grid**: Optional grid overlay (toggleable)
 - **Measurement Tools**: Line, circle, and cone measurement tools
+- **Synchronized Measurements**: Measurements sync in real-time to all connected players (purple for remote, yellow for local)
+- **Token Highlighting**: Tokens touched by any measurement glow orange
 - **Real-time Sync**: All changes sync instantly across connected browsers via WebSocket
 - **No Login**: All users have full access to all features
 - **Pan and Zoom**: using right mouse button hold and scroll wheel
@@ -62,8 +64,6 @@ The server maintains authoritative game state. All client actions are sent to th
 - Pixels-per-foot scale configurable in UI
 
 ## Planned features
-- synchronise measuring tools so other players can see them
-- highlight tokens that are touched by a line, cone or circle measurement
 - toggle to snap tokens to grid during movement
 - grid alignment tool, where the user draws a box and the grid offset and size is set based on it
 - feet distance based on grid size, not pixels

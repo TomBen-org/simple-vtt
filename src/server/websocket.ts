@@ -65,6 +65,14 @@ function handleMessage(message: WSMessage, sender: WebSocket): void {
       broadcast(message);
       break;
 
+    case 'measurement:update':
+      broadcast(message);
+      break;
+
+    case 'measurement:clear':
+      broadcast(message);
+      break;
+
     case 'sync':
       break;
   }
