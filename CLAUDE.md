@@ -74,6 +74,8 @@ The server maintains authoritative game state. All client actions are sent to th
 - ux for tweaking for grid offset
 - use floating point for grid scale and grid offset
 - ux increasing and decreasing grid scale and grid offset should go up and down by 1, and you should be able to type fractional values
+- support for uploading multiple map images, each map on a different scene
+- UX for swapping between scenes, deleting scenes, and moving tokens between scenes
 
 ## Extra instructions for Claude
 - If necessary, update this file after implementing each feature, or having a discussion about features.
