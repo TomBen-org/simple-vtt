@@ -369,17 +369,27 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
       // Grid alignment tool: set grid size and offset based on drawn box
       const width = Math.abs(toolState.endX - toolState.startX);
       const height = Math.abs(toolState.endY - toolState.startY);
-      const minX = Math.min(toolState.startX, toolState.endX);
-      const minY = Math.min(toolState.startY, toolState.endY);
 
       if (width > 10 && height > 10) {
-        // Use average of width and height as grid size
-        const newGridSize = Math.round((width + height) / 2);
-        // Calculate offset so grid aligns with the drawn box corner
-        const offsetX = minX % newGridSize;
-        const offsetY = minY % newGridSize;
+        // Use the longest side for calculation (square grid)
+        const longestSide = Math.max(width, height);
+        const dimension = width >= height ? 'width' : 'height';
 
-        wsClient.setGrid(gameState.map.gridEnabled, newGridSize, offsetX, offsetY);
+        // Ask user how many cells were selected
+        const input = prompt(`How many grid cells did you select along the ${dimension}?`, '1');
+        if (input !== null) {
+          const cellCount = parseFloat(input);
+          if (!isNaN(cellCount) && cellCount > 0) {
+            // Calculate grid size from selection
+            const newGridSize = longestSide / cellCount;
+
+            // Use starting point for offset calculation
+            const offsetX = toolState.startX % newGridSize;
+            const offsetY = toolState.startY % newGridSize;
+
+            wsClient.setGrid(gameState.map.gridEnabled, newGridSize, offsetX, offsetY);
+          }
+        }
       }
     } else if (toolState.currentTool !== 'move' && toolState.currentTool !== 'grid-align' && toolState.isDragging) {
       // Clear measurement from other players' views

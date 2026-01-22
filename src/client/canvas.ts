@@ -245,13 +245,12 @@ function drawMeasurement(map: MapSettings, toolState: ToolState): void {
     ctx.fill();
     ctx.stroke();
 
-    // Show size label
-    const avgSize = Math.round((width + height) / 2);
+    // Show size label with dimensions
     ctx.font = 'bold 14px Arial';
     ctx.fillStyle = 'white';
     ctx.strokeStyle = 'black';
     ctx.lineWidth = 3;
-    const text = `${avgSize}px grid`;
+    const text = `${Math.round(width)} × ${Math.round(height)} px`;
     ctx.strokeText(text, minX + 5, minY + 20);
     ctx.fillText(text, minX + 5, minY + 20);
   }
