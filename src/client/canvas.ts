@@ -1,6 +1,7 @@
 import { GameState, Token, MapSettings } from '../shared/types.js';
 import { getTokenImage, loadTokenImage } from './tokens.js';
 import { ToolState, getCurrentMeasurement } from './tools.js';
+import { ViewState } from './viewState.js';
 
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
@@ -45,19 +46,25 @@ export function loadBackground(url: string): Promise<void> {
 export function render(
   state: GameState,
   toolState: ToolState,
-  selectedTokenId: string | null
+  selectedTokenId: string | null,
+  viewState: ViewState
 ): void {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.fillStyle = '#1a1a2e';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  // Apply view transform
+  ctx.save();
+  ctx.translate(viewState.panX, viewState.panY);
+  ctx.scale(viewState.zoom, viewState.zoom);
+
   if (backgroundImage) {
     ctx.drawImage(backgroundImage, 0, 0);
   }
 
   if (state.map.gridEnabled) {
-    drawGrid(state.map);
+    drawGrid(state.map, viewState);
   }
 
   state.tokens.forEach(token => {
@@ -65,24 +72,40 @@ export function render(
   });
 
   drawMeasurement(state.map, toolState);
+
+  ctx.restore();
 }
 
-function drawGrid(map: MapSettings): void {
+function drawGrid(map: MapSettings, viewState: ViewState): void {
   const gridSize = map.gridSize;
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1 / viewState.zoom; // Keep line width consistent at different zoom levels
 
-  for (let x = 0; x <= canvas.width; x += gridSize) {
+  // Calculate visible bounds in world coordinates
+  const worldLeft = -viewState.panX / viewState.zoom;
+  const worldTop = -viewState.panY / viewState.zoom;
+  const worldRight = (canvas.width - viewState.panX) / viewState.zoom;
+  const worldBottom = (canvas.height - viewState.panY) / viewState.zoom;
+
+  // Calculate grid line start/end positions (aligned to grid)
+  const startX = Math.floor(worldLeft / gridSize) * gridSize;
+  const endX = Math.ceil(worldRight / gridSize) * gridSize;
+  const startY = Math.floor(worldTop / gridSize) * gridSize;
+  const endY = Math.ceil(worldBottom / gridSize) * gridSize;
+
+  // Draw vertical lines
+  for (let x = startX; x <= endX; x += gridSize) {
     ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, canvas.height);
+    ctx.moveTo(x, startY);
+    ctx.lineTo(x, endY);
     ctx.stroke();
   }
 
-  for (let y = 0; y <= canvas.height; y += gridSize) {
+  // Draw horizontal lines
+  for (let y = startY; y <= endY; y += gridSize) {
     ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(canvas.width, y);
+    ctx.moveTo(startX, y);
+    ctx.lineTo(endX, y);
     ctx.stroke();
   }
 }

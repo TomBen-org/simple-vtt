@@ -13,13 +13,20 @@ import {
   setOnGridChange,
   setOnScaleChange,
 } from './ui.js';
+import { createViewState, ViewState, screenToWorld, startPan, updatePan, endPan, applyZoom } from './viewState.js';
 
 let gameState: GameState = { ...DEFAULT_GAME_STATE, tokens: [], map: { ...DEFAULT_GAME_STATE.map } };
 let toolState: ToolState = createToolState();
+let viewState: ViewState = createViewState();
 let selectedTokenId: string | null = null;
 let draggedToken: Token | null = null;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
+
+// Pan tracking
+let isRightMouseDown = false;
+let hasPanned = false;
+const PAN_THRESHOLD = 3;
 
 function init(): void {
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -87,7 +94,7 @@ function init(): void {
   wsClient.connect();
 
   function renderLoop(): void {
-    render(gameState, toolState, selectedTokenId);
+    render(gameState, toolState, selectedTokenId, viewState);
     requestAnimationFrame(renderLoop);
   }
   renderLoop();
@@ -138,8 +145,21 @@ function setupEventHandlers(): void {
 function setupCanvasEvents(canvas: HTMLCanvasElement): void {
   canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+
+    // Right-click starts panning
+    if (e.button === 2) {
+      isRightMouseDown = true;
+      hasPanned = false;
+      startPan(viewState, screenX, screenY);
+      return;
+    }
+
+    // Convert screen coordinates to world coordinates
+    const world = screenToWorld(viewState, screenX, screenY);
+    const x = world.x;
+    const y = world.y;
 
     if (toolState.currentTool === 'select') {
       const token = findTokenAtPoint(x, y, gameState.tokens);
@@ -160,8 +180,24 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
 
   canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+
+    // Handle panning
+    if (isRightMouseDown) {
+      const dx = screenX - viewState.panStartX;
+      const dy = screenY - viewState.panStartY;
+      if (Math.abs(dx) > PAN_THRESHOLD || Math.abs(dy) > PAN_THRESHOLD) {
+        hasPanned = true;
+      }
+      updatePan(viewState, screenX, screenY);
+      return;
+    }
+
+    // Convert screen coordinates to world coordinates
+    const world = screenToWorld(viewState, screenX, screenY);
+    const x = world.x;
+    const y = world.y;
 
     if (toolState.isDragging) {
       if (toolState.currentTool === 'select' && draggedToken) {
@@ -176,6 +212,13 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
   });
 
   canvas.addEventListener('mouseup', (e) => {
+    // Handle right-click release for panning
+    if (e.button === 2) {
+      isRightMouseDown = false;
+      endPan(viewState);
+      return;
+    }
+
     if (toolState.currentTool === 'select' && draggedToken) {
       wsClient.moveToken(draggedToken.id, draggedToken.x, draggedToken.y);
       draggedToken = null;
@@ -185,17 +228,33 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
 
   canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
 
-    const token = findTokenAtPoint(x, y, gameState.tokens);
+    // Don't show context menu if we just panned
+    if (hasPanned) {
+      return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const world = screenToWorld(viewState, screenX, screenY);
+
+    const token = findTokenAtPoint(world.x, world.y, gameState.tokens);
     if (token) {
       if (confirm(`Delete token "${token.name || 'Unnamed'}"?`)) {
         wsClient.removeToken(token.id);
       }
     }
   });
+
+  // Zoom with scroll wheel
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const cursorX = e.clientX - rect.left;
+    const cursorY = e.clientY - rect.top;
+    applyZoom(viewState, e.deltaY, cursorX, cursorY);
+  }, { passive: false });
 }
 
 document.addEventListener('DOMContentLoaded', init);
