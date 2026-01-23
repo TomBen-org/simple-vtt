@@ -1,0 +1,13 @@
+title: Simple VTT
+description: A lightweight Virtual Table Top for tabletop RPG games
+theme: jekyll-theme-cayman
+
+# GitHub Pages settings
+baseurl: "/simple-vtt"
+url: "https://tomben-org.github.io"
+
+# Markdown settings
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
