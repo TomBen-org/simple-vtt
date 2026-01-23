@@ -87,6 +87,16 @@ Toggle Draw Mode button to reveal drawing tools. When enabled, mouse events draw
 - **Scene selector**: Dropdown to switch between scenes, with buttons to add (+), rename, and delete scenes. When uploading a map, you can choose to create a new scene or replace the current background.
 - Distance is always 5 feet per grid cell
 
+## Documentation
+
+- `README.md` - Project overview for GitHub
+- `docs/` - GitHub Pages documentation site (Jekyll)
+  - `index.md` - Documentation home
+  - `user-guide.md` - How to use the VTT
+  - `hosting.md` - Self-hosting instructions
+
+To enable GitHub Pages: repo Settings → Pages → Deploy from branch → main, /docs folder.
+
 ## Planned features
 - garbage collect unused images
 - moving tokens between scenes
