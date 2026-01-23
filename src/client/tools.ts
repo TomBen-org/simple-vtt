@@ -1,4 +1,4 @@
-export type Tool = 'move' | 'line' | 'circle' | 'cone' | 'grid-align';
+export type Tool = 'move' | 'line' | 'circle' | 'cone' | 'grid-align' | 'pan-zoom';
 
 export interface ToolState {
   currentTool: Tool;

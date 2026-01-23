@@ -26,6 +26,8 @@ import {
   setDrawColor,
   setOnDrawingOpacityChange,
   setOnEraseModeChange,
+  setMobileMode,
+  getIsMobileMode,
 } from './ui.js';
 import { createViewState, ViewState, screenToWorld, startPan, updatePan, endPan, applyZoom } from './viewState.js';
 import { getTokensInMeasurement } from './geometry.js';
@@ -97,6 +99,10 @@ let drawingOpacity = 1.0;
 // Valid image types for drag-and-drop
 const VALID_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
+// Touch handling state
+const activePointers = new Map<number, { x: number; y: number }>();
+let lastPinchDistance = 0;
+
 function isValidImageFile(file: File): boolean {
   return VALID_IMAGE_TYPES.includes(file.type);
 }
@@ -128,6 +134,12 @@ function init(): void {
   setupCanvasEvents(canvas);
   setupContextMenu();
   setupDragAndDrop(canvas);
+
+  // Initial mobile mode detection
+  if (window.matchMedia('(pointer: coarse)').matches) {
+    setMobileMode(true);
+    setTool(toolState, 'pan-zoom');
+  }
 
   // Set up drawing layer callbacks
   drawingLayer.onStrokeUpdate = (stroke: DrawStroke) => {
@@ -479,7 +491,35 @@ function setupEventHandlers(): void {
 }
 
 function setupCanvasEvents(canvas: HTMLCanvasElement): void {
-  canvas.addEventListener('mousedown', (e) => {
+  // Helper function to get pinch distance between two pointers
+  function getPinchDistance(): number {
+    if (activePointers.size < 2) return 0;
+    const points = Array.from(activePointers.values());
+    const dx = points[1].x - points[0].x;
+    const dy = points[1].y - points[0].y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // Helper function to get pinch center between two pointers
+  function getPinchCenter(): { x: number; y: number } {
+    if (activePointers.size < 2) return { x: 0, y: 0 };
+    const points = Array.from(activePointers.values());
+    return {
+      x: (points[0].x + points[1].x) / 2,
+      y: (points[0].y + points[1].y) / 2,
+    };
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    // Detect input type and switch modes
+    if (e.pointerType === 'touch' && !getIsMobileMode()) {
+      setMobileMode(true);
+      setTool(toolState, 'pan-zoom');
+    } else if (e.pointerType === 'mouse' && getIsMobileMode()) {
+      setMobileMode(false);
+      setTool(toolState, 'move');
+    }
+
     // Hide context menu on any click
     hideContextMenu();
 
@@ -487,21 +527,46 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
 
-    // Right-click starts panning
-    if (e.button === 2) {
+    // Track active pointers for multi-touch
+    activePointers.set(e.pointerId, { x: screenX, y: screenY });
+
+    // For touch, capture pointer for proper tracking
+    if (e.pointerType === 'touch') {
+      canvas.setPointerCapture(e.pointerId);
+    }
+
+    // Right-click starts panning (desktop only)
+    if (e.button === 2 && !getIsMobileMode()) {
       isRightMouseDown = true;
       hasPanned = false;
       startPan(viewState, screenX, screenY);
       return;
     }
 
+    // Handle pinch-to-zoom start (second finger)
+    if (activePointers.size === 2) {
+      lastPinchDistance = getPinchDistance();
+      return;
+    }
+
+    // Only process single-pointer actions for first pointer
+    if (activePointers.size > 1) return;
+
     // Convert screen coordinates to world coordinates
     const world = screenToWorld(viewState, screenX, screenY);
     const x = world.x;
     const y = world.y;
 
-    // Drawing mode handling
-    if (drawModeEnabled) {
+    // Pan-zoom mode: start panning
+    if (toolState.currentTool === 'pan-zoom') {
+      isRightMouseDown = true; // Reuse pan state
+      hasPanned = false;
+      startPan(viewState, screenX, screenY);
+      return;
+    }
+
+    // Drawing mode handling (desktop only)
+    if (drawModeEnabled && !getIsMobileMode()) {
       const brush = drawingLayer.getBrush();
       if (brush.tool === 'fill') {
         // Flood fill on click (async, fire-and-forget)
@@ -544,16 +609,38 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
         }
       }
     } else {
+      // Measurement tools (line, circle, cone, grid-align)
       startDrag(toolState, x, y);
     }
   });
 
-  canvas.addEventListener('mousemove', (e) => {
+  canvas.addEventListener('pointermove', (e) => {
     const rect = canvas.getBoundingClientRect();
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
 
-    // Handle panning
+    // Update pointer tracking
+    if (activePointers.has(e.pointerId)) {
+      activePointers.set(e.pointerId, { x: screenX, y: screenY });
+    }
+
+    // Handle pinch-to-zoom
+    if (activePointers.size === 2 && lastPinchDistance > 0) {
+      const newDistance = getPinchDistance();
+      const center = getPinchCenter();
+
+      if (newDistance > 0 && lastPinchDistance > 0) {
+        const scale = newDistance / lastPinchDistance;
+        // Calculate zoom delta (similar to wheel zoom)
+        const zoomDelta = (1 - scale) * 500;
+        applyZoom(viewState, zoomDelta, center.x, center.y);
+      }
+
+      lastPinchDistance = newDistance;
+      return;
+    }
+
+    // Handle panning (right-click or pan-zoom mode)
     if (isRightMouseDown) {
       const dx = screenX - viewState.panStartX;
       const dy = screenY - viewState.panStartY;
@@ -569,8 +656,8 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const x = world.x;
     const y = world.y;
 
-    // Update drawing cursor position
-    if (drawModeEnabled) {
+    // Update drawing cursor position (desktop only)
+    if (drawModeEnabled && !getIsMobileMode()) {
       const brush = drawingLayer.getBrush();
       const showCursor = brush.tool === 'brush';
       drawingLayer.updateCursor(x, y, showCursor);
@@ -578,8 +665,8 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
       drawingLayer.updateCursor(0, 0, false);
     }
 
-    // Drawing mode handling
-    if (drawModeEnabled && isDrawing) {
+    // Drawing mode handling (desktop only)
+    if (drawModeEnabled && isDrawing && !getIsMobileMode()) {
       drawingLayer.continueStroke(x, y);
       return;
     }
@@ -608,7 +695,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
           draggedToken.y = newY;
           updateDrag(toolState, draggedToken.x + tokenWidth / 2, draggedToken.y + tokenHeight / 2);
         }
-      } else {
+      } else if (toolState.currentTool !== 'pan-zoom') {
         updateDrag(toolState, x, y);
 
         // Send measurement update to other players (throttled)
@@ -632,16 +719,24 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     }
   });
 
-  canvas.addEventListener('mouseup', (e) => {
-    // Handle right-click release for panning
-    if (e.button === 2) {
+  canvas.addEventListener('pointerup', (e) => {
+    // Remove pointer from tracking
+    activePointers.delete(e.pointerId);
+
+    // Reset pinch distance when fewer than 2 fingers
+    if (activePointers.size < 2) {
+      lastPinchDistance = 0;
+    }
+
+    // Handle right-click release or pan-zoom end
+    if (e.button === 2 || (toolState.currentTool === 'pan-zoom' && isRightMouseDown)) {
       isRightMouseDown = false;
       endPan(viewState);
       return;
     }
 
-    // Drawing mode handling
-    if (drawModeEnabled && isDrawing) {
+    // Drawing mode handling (desktop only)
+    if (drawModeEnabled && isDrawing && !getIsMobileMode()) {
       isDrawing = false;
       drawingLayer.endStroke();
       return;
@@ -677,15 +772,33 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
           }
         }
       }
-    } else if (toolState.currentTool !== 'move' && toolState.currentTool !== 'grid-align' && toolState.isDragging) {
+    } else if (toolState.currentTool !== 'move' && toolState.currentTool !== 'grid-align' && toolState.currentTool !== 'pan-zoom' && toolState.isDragging) {
       // Clear measurement from other players' views
       wsClient.clearMeasurement(playerId);
     }
     endDrag(toolState);
   });
 
+  canvas.addEventListener('pointercancel', (e) => {
+    // Clean up on pointer cancel (e.g., touch interrupted)
+    activePointers.delete(e.pointerId);
+    if (activePointers.size < 2) {
+      lastPinchDistance = 0;
+    }
+    if (activePointers.size === 0) {
+      isRightMouseDown = false;
+      endPan(viewState);
+      endDrag(toolState);
+    }
+  });
+
   canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
+
+    // Don't show context menu on mobile
+    if (getIsMobileMode()) {
+      return;
+    }
 
     // Don't show context menu if we just panned
     if (hasPanned) {
@@ -708,8 +821,9 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     }
   });
 
-  // Zoom with scroll wheel
+  // Zoom with scroll wheel (desktop only - mobile uses pinch)
   canvas.addEventListener('wheel', (e) => {
+    if (getIsMobileMode()) return;
     e.preventDefault();
     const rect = canvas.getBoundingClientRect();
     const cursorX = e.clientX - rect.left;
@@ -718,7 +832,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
   }, { passive: false });
 
   // Hide drawing cursor when leaving canvas
-  canvas.addEventListener('mouseleave', () => {
+  canvas.addEventListener('pointerleave', () => {
     drawingLayer.updateCursor(0, 0, false);
   });
 

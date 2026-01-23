@@ -8,7 +8,7 @@ import { setupWebSocket } from './websocket';
 import { getUploadsDir, ensureDataDir } from './persistence';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 30000;
 
 ensureDataDir();
 

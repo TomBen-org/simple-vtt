@@ -19,6 +19,7 @@ type DrawingOpacityChangeHandler = (opacity: number) => void;
 type EraseModeChangeHandler = (enabled: boolean) => void;
 
 let onToolChange: ToolChangeHandler | null = null;
+let isMobileMode = false;
 let onMapUpload: MapUploadHandler | null = null;
 let onTokenUpload: TokenUploadHandler | null = null;
 let onGridChange: GridChangeHandler | null = null;
@@ -301,6 +302,17 @@ export function initUI(): void {
       }
     });
   }
+
+  // Mobile toolbar buttons
+  document.querySelectorAll('.mobile-tool-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tool = btn.getAttribute('data-tool') as Tool;
+      if (tool && onToolChange) {
+        setActiveMobileTool(tool);
+        onToolChange(tool);
+      }
+    });
+  });
 }
 
 export function setActiveTool(tool: Tool): void {
@@ -330,6 +342,41 @@ export function setActiveDrawTool(tool: DrawTool): void {
       btn.classList.add('active');
     }
   });
+}
+
+export function setActiveMobileTool(tool: Tool): void {
+  document.querySelectorAll('.mobile-tool-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.getAttribute('data-tool') === tool) {
+      btn.classList.add('active');
+    }
+  });
+}
+
+export function setMobileMode(enabled: boolean): void {
+  if (isMobileMode === enabled) return;
+
+  isMobileMode = enabled;
+  document.body.classList.toggle('mobile-mode', enabled);
+
+  // Reset to appropriate default tool when switching modes
+  if (enabled) {
+    // Entering mobile mode - set to pan-zoom
+    setActiveMobileTool('pan-zoom');
+    if (onToolChange) {
+      onToolChange('pan-zoom');
+    }
+  } else {
+    // Entering desktop mode - set to move
+    setActiveTool('move');
+    if (onToolChange) {
+      onToolChange('move');
+    }
+  }
+}
+
+export function getIsMobileMode(): boolean {
+  return isMobileMode;
 }
 
 export function setDrawModeEnabled(enabled: boolean): void {

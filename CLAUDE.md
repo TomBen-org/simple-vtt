@@ -30,6 +30,7 @@ Open http://localhost:3000 in your browser.
 - **Multiple Scenes**: Support for multiple scenes, each with its own map, tokens, and grid settings. All clients view the same active scene (shared view).
 - **Drag-and-Drop Tokens**: Drag image files (PNG, JPEG, GIF, WebP) onto the canvas to create tokens at the drop position. Multiple files are arranged in a grid pattern.
 - **Drawing Layer**: Paint/draw on a layer above the map but below tokens. Includes brush, eraser, shapes (line, rect, ellipse), and fill bucket tools. Drawings sync in real-time and persist per-scene.
+- **Touch Support**: Mobile-friendly interface with automatic detection. Touch devices get a simplified 5-button toolbar (Pan/Zoom, Move, Line, Circle, Cone) with pinch-to-zoom and one-finger pan.
 
 ## Tech Stack
 
@@ -87,6 +88,19 @@ Toggle Draw Mode button to reveal drawing tools. When enabled, mouse events draw
 - **Scene selector**: Dropdown to switch between scenes, with buttons to add (+), rename, and delete scenes. When uploading a map, you can choose to create a new scene or replace the current background.
 - Distance is always 5 feet per grid cell
 
+## Mobile/Touch Mode
+
+The app automatically detects touch input and switches to a mobile-optimized UI:
+
+- **Automatic detection**: Uses `(pointer: coarse)` media query on load, then dynamically switches based on actual input type (touch vs mouse)
+- **Mobile toolbar**: 5 large (50px) buttons with SVG icons: Pan/Zoom, Move, Line, Circle, Cone
+- **Pan/Zoom mode**: One-finger drag to pan, pinch with two fingers to zoom
+- **Move mode**: Touch a token to drag it; touching the background does nothing
+- **Measurement tools**: Touch and drag to measure with line, circle, or cone
+- **No context menu**: Right-click context menu is disabled on mobile
+- **No drawing mode**: Drawing tools are hidden on mobile
+- **Switching back**: Using a mouse automatically switches back to desktop mode
+
 ## Documentation
 
 - `README.md` - Project overview for GitHub
@@ -101,13 +115,10 @@ To enable GitHub Pages: repo Settings → Pages → Deploy from branch → main,
 - garbage collect unused images / map files / drawing tiles when possible
 - when dragging a token to move it, show a preview of that to other users like we do with the line/cone/circle tools
 - fix issue in the distance text when previewing a token move / line measure tool, the outline on the "x ft" text appears to be dashed like the line instead of solid like it is in the cone and circle tools
-
-### Bigger feature: Touch support
-- on mobile we need different ux with touch support:
-- disable the regular pan zoom with right mouse button
-- pan/zoom tool (only available on mobile) where touch moves the viewpoint with pinch to zoom, touch and drag background to move
-- touch and drag a token to move a token/use a tool only when that tool is selected
-- hide everything on the toolbar except the tools. Mobile users cannot upload tokens or change maps
+- measuring text and line/circle/cone outlines are scaled based on zoom, which means it is not readable when zoomed out. Make them a constant size in screen space, regardless of zoom level.
+- on some browsers dragging on the screen scrolls the browser ui back up to the address bar
+- long press on a token during move mode should swap to token move mode with that token being moved
+- zoom should not work when in tools that are not the pan/zoom tool.
 
 ## Extra instructions for Claude
 - If necessary, update this file after implementing each feature, or having a discussion about features.
