@@ -97,12 +97,12 @@ Toggle Draw Mode button to reveal drawing tools. When enabled, mouse events draw
 
 To enable GitHub Pages: repo Settings → Pages → Deploy from branch → main, /docs folder.
 
-## Planned features
-- I should be able to choose transparency as a colour somehow, so I can eg use the rect tool to erase
+## TODO
 - garbage collect unused images / map files / drawing tiles when possible
 - moving tokens between scenes via right click menu
 - duplicate tokens via right click menu
 - when dragging a token to move it, show a preview of that to other users like we do with the line/cone/circle tools
+- fix issue in the distance text when previewing a token move / line measure tool, the outline on the "x ft" text appears to be dashed like the line instead of solid like it is in the cone and circle tools
 - draw the grid on top of the drawings layer
 
 ## Extra instructions for Claude

@@ -12,7 +12,7 @@ export interface Token {
 export const CHUNK_SIZE = 512;
 export type ChunkKey = string;  // e.g., "0,0", "-1,2"
 
-export type DrawTool = 'brush' | 'eraser' | 'rect' | 'ellipse' | 'line' | 'fill' | 'picker';
+export type DrawTool = 'brush' | 'rect' | 'ellipse' | 'line' | 'fill' | 'picker';
 
 export interface DrawStroke {
   id: string;
@@ -20,6 +20,7 @@ export interface DrawStroke {
   color: string;
   brushSize: number;
   points: { x: number; y: number }[];
+  eraseMode?: boolean;  // When true, shape tools erase instead of draw
   // For shape tools (rect, ellipse, line), points[0] is start, points[1] is end
 }
 

@@ -6,6 +6,7 @@ export interface BrushSettings {
   tool: DrawTool;
   color: string;
   size: number;
+  eraseMode: boolean;
 }
 
 export class DrawingLayer {
@@ -17,6 +18,7 @@ export class DrawingLayer {
     tool: 'brush',
     color: '#ff0000',
     size: 10,
+    eraseMode: false,
   };
 
   // Cursor position for preview circle
@@ -84,6 +86,7 @@ export class DrawingLayer {
       color: this.brushSettings.color,
       brushSize: this.brushSettings.size,
       points: [{ x: worldX, y: worldY }],
+      eraseMode: this.brushSettings.eraseMode,
     };
 
     // Set scratch canvas origin to center around the starting point
@@ -96,11 +99,13 @@ export class DrawingLayer {
 
     // For shape tools, we just record the start point
     if (this.brushSettings.tool === 'brush') {
-      // Draw initial point to scratch canvas
-      this.drawPointToScratch(worldX, worldY);
-    } else if (this.brushSettings.tool === 'eraser') {
-      // Eraser applies directly to chunks (can't preview on transparent scratch)
-      this.applyEraserPoint(worldX, worldY);
+      if (this.brushSettings.eraseMode) {
+        // Erase mode applies directly to chunks (can't preview on transparent scratch)
+        this.applyEraserPoint(worldX, worldY);
+      } else {
+        // Draw initial point to scratch canvas
+        this.drawPointToScratch(worldX, worldY);
+      }
     }
 
     // Notify listeners
@@ -115,12 +120,13 @@ export class DrawingLayer {
     const lastPoint = this.currentStroke.points[this.currentStroke.points.length - 1];
 
     if (this.brushSettings.tool === 'brush') {
-      // Draw line from last point to current point on scratch canvas
-      this.drawLineToScratch(lastPoint.x, lastPoint.y, worldX, worldY);
-      this.currentStroke.points.push({ x: worldX, y: worldY });
-    } else if (this.brushSettings.tool === 'eraser') {
-      // Eraser applies directly to chunks
-      this.applyEraserLine(lastPoint.x, lastPoint.y, worldX, worldY);
+      if (this.brushSettings.eraseMode) {
+        // Erase mode applies directly to chunks
+        this.applyEraserLine(lastPoint.x, lastPoint.y, worldX, worldY);
+      } else {
+        // Draw line from last point to current point on scratch canvas
+        this.drawLineToScratch(lastPoint.x, lastPoint.y, worldX, worldY);
+      }
       this.currentStroke.points.push({ x: worldX, y: worldY });
     } else {
       // For shape tools, update the end point
@@ -130,7 +136,7 @@ export class DrawingLayer {
         this.currentStroke.points.push({ x: worldX, y: worldY });
       }
 
-      // Redraw shape preview on scratch canvas
+      // Redraw shape preview on scratch canvas (shapes can't preview erase, but we show the shape)
       this.scratchCtx.clearRect(0, 0, this.scratchCanvas.width, this.scratchCanvas.height);
       this.drawShapeToScratch(this.currentStroke);
     }
@@ -307,7 +313,7 @@ export class DrawingLayer {
       ctx.save();
       ctx.translate(-chunkWorld.x, -chunkWorld.y);
 
-      if (stroke.tool === 'eraser') {
+      if (stroke.eraseMode) {
         ctx.globalCompositeOperation = 'destination-out';
       }
 
@@ -317,7 +323,7 @@ export class DrawingLayer {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      if (stroke.tool === 'brush' || stroke.tool === 'eraser') {
+      if (stroke.tool === 'brush') {
         // Draw the path
         if (stroke.points.length === 1) {
           ctx.beginPath();
@@ -399,7 +405,7 @@ export class DrawingLayer {
 
     ctx.save();
 
-    if (stroke.tool === 'eraser') {
+    if (stroke.eraseMode) {
       ctx.globalCompositeOperation = 'destination-out';
     }
 
@@ -409,7 +415,7 @@ export class DrawingLayer {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    if (stroke.tool === 'brush' || stroke.tool === 'eraser') {
+    if (stroke.tool === 'brush') {
       if (stroke.points.length === 1) {
         ctx.beginPath();
         ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.brushSize / 2, 0, Math.PI * 2);
@@ -583,17 +589,17 @@ export class DrawingLayer {
       }
     }
 
-    // Draw scratch canvas (in-progress strokes, but not for eraser)
-    if (this.currentStroke && this.currentStroke.tool !== 'eraser') {
+    // Draw scratch canvas (in-progress strokes, but not when erasing with brush)
+    if (this.currentStroke && !(this.currentStroke.tool === 'brush' && this.currentStroke.eraseMode)) {
       ctx.drawImage(this.scratchCanvas, this.scratchOriginX, this.scratchOriginY);
     }
 
     ctx.restore();
 
-    // Draw cursor preview circle for brush/eraser (at full opacity, outside save/restore)
-    if (this.showCursor && (this.brushSettings.tool === 'brush' || this.brushSettings.tool === 'eraser')) {
+    // Draw cursor preview circle for brush (at full opacity, outside save/restore)
+    if (this.showCursor && this.brushSettings.tool === 'brush') {
       ctx.save();
-      ctx.strokeStyle = this.brushSettings.tool === 'eraser' ? '#ffffff' : this.brushSettings.color;
+      ctx.strokeStyle = this.brushSettings.eraseMode ? '#ffffff' : this.brushSettings.color;
       ctx.lineWidth = 2 / viewState.zoom;
       ctx.setLineDash([4 / viewState.zoom, 4 / viewState.zoom]);
       ctx.beginPath();

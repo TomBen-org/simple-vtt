@@ -16,6 +16,7 @@ type DrawColorChangeHandler = (color: string) => void;
 type DrawBrushSizeChangeHandler = (size: number) => void;
 type DrawClearHandler = () => void;
 type DrawingOpacityChangeHandler = (opacity: number) => void;
+type EraseModeChangeHandler = (enabled: boolean) => void;
 
 let onToolChange: ToolChangeHandler | null = null;
 let onMapUpload: MapUploadHandler | null = null;
@@ -32,6 +33,7 @@ let onDrawColorChange: DrawColorChangeHandler | null = null;
 let onDrawBrushSizeChange: DrawBrushSizeChangeHandler | null = null;
 let onDrawClear: DrawClearHandler | null = null;
 let onDrawingOpacityChange: DrawingOpacityChangeHandler | null = null;
+let onEraseModeChange: EraseModeChangeHandler | null = null;
 
 export function initUI(): void {
   document.querySelectorAll('.tool-btn').forEach(btn => {
@@ -289,6 +291,16 @@ export function initUI(): void {
       }
     });
   }
+
+  // Erase mode checkbox
+  const eraseModeToggle = document.getElementById('erase-mode-toggle') as HTMLInputElement;
+  if (eraseModeToggle) {
+    eraseModeToggle.addEventListener('change', () => {
+      if (onEraseModeChange) {
+        onEraseModeChange(eraseModeToggle.checked);
+      }
+    });
+  }
 }
 
 export function setActiveTool(tool: Tool): void {
@@ -438,4 +450,8 @@ export function setDrawColor(color: string): void {
 
 export function setOnDrawingOpacityChange(handler: DrawingOpacityChangeHandler): void {
   onDrawingOpacityChange = handler;
+}
+
+export function setOnEraseModeChange(handler: EraseModeChangeHandler): void {
+  onEraseModeChange = handler;
 }

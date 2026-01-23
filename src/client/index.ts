@@ -25,6 +25,7 @@ import {
   setDrawModeEnabled,
   setDrawColor,
   setOnDrawingOpacityChange,
+  setOnEraseModeChange,
 } from './ui.js';
 import { createViewState, ViewState, screenToWorld, startPan, updatePan, endPan, applyZoom } from './viewState.js';
 import { getTokensInMeasurement } from './geometry.js';
@@ -455,6 +456,10 @@ function setupEventHandlers(): void {
   setOnDrawingOpacityChange((opacity: number) => {
     drawingOpacity = opacity;
   });
+
+  setOnEraseModeChange((enabled: boolean) => {
+    drawingLayer.setBrush({ eraseMode: enabled });
+  });
 }
 
 function setupCanvasEvents(canvas: HTMLCanvasElement): void {
@@ -551,7 +556,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     // Update drawing cursor position
     if (drawModeEnabled) {
       const brush = drawingLayer.getBrush();
-      const showCursor = brush.tool === 'brush' || brush.tool === 'eraser';
+      const showCursor = brush.tool === 'brush';
       drawingLayer.updateCursor(x, y, showCursor);
     } else {
       drawingLayer.updateCursor(0, 0, false);
