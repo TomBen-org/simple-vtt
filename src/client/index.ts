@@ -203,6 +203,22 @@ function init(): void {
         }
         break;
 
+      case 'token:move-to-scene':
+        // Move token from active scene to target scene in local state
+        const moveFromScene = getActiveScene();
+        const moveToScene = gameState.scenes.find(s => s.id === message.targetSceneId);
+        if (moveFromScene && moveToScene) {
+          const tokenIndex = moveFromScene.tokens.findIndex(t => t.id === message.tokenId);
+          if (tokenIndex !== -1) {
+            const [movedToken] = moveFromScene.tokens.splice(tokenIndex, 1);
+            moveToScene.tokens.push(movedToken);
+          }
+          if (selectedTokenId === message.tokenId) {
+            selectedTokenId = null;
+          }
+        }
+        break;
+
       case 'map:set':
         const mapSetScene = getActiveScene();
         if (mapSetScene) {
@@ -726,6 +742,35 @@ function showContextMenu(x: number, y: number, tokenId: string): void {
 
   contextMenuTokenId = tokenId;
 
+  // Populate scene submenu with other scenes
+  const sceneSubmenu = document.getElementById('scene-submenu');
+  const moveToSceneSubmenu = document.getElementById('move-to-scene-submenu');
+  if (sceneSubmenu && moveToSceneSubmenu) {
+    sceneSubmenu.innerHTML = '';
+    const otherScenes = gameState.scenes.filter(s => s.id !== gameState.activeSceneId);
+
+    if (otherScenes.length === 0) {
+      // Disable the submenu trigger when no other scenes
+      const trigger = moveToSceneSubmenu.querySelector('.submenu-trigger');
+      if (trigger) {
+        trigger.classList.add('disabled');
+      }
+    } else {
+      const trigger = moveToSceneSubmenu.querySelector('.submenu-trigger');
+      if (trigger) {
+        trigger.classList.remove('disabled');
+      }
+      otherScenes.forEach(scene => {
+        const btn = document.createElement('button');
+        btn.className = 'context-menu-item';
+        btn.dataset.action = 'move-to-scene-target';
+        btn.dataset.sceneId = scene.id;
+        btn.textContent = scene.name;
+        sceneSubmenu.appendChild(btn);
+      });
+    }
+  }
+
   // Position the menu
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
@@ -768,6 +813,37 @@ function setupContextMenu(): void {
       // Size is in grid units now (1, 2, 3, 4)
       wsClient.resizeToken(contextMenuTokenId, size, size);
       hideContextMenu();
+    } else if (action === 'duplicate' && contextMenuTokenId) {
+      const activeScene = getActiveScene();
+      if (activeScene) {
+        const token = activeScene.tokens.find(t => t.id === contextMenuTokenId);
+        if (token) {
+          const gridSize = activeScene.map.gridSize;
+          const newToken: Token = {
+            id: generateUUID(),
+            x: token.x + gridSize,
+            y: token.y + gridSize,
+            imageUrl: token.imageUrl,
+            gridWidth: token.gridWidth,
+            gridHeight: token.gridHeight,
+            name: token.name,
+          };
+          wsClient.addToken(newToken);
+        }
+      }
+      hideContextMenu();
+    } else if (action === 'move-to-scene-target' && contextMenuTokenId) {
+      const targetSceneId = target.dataset.sceneId;
+      if (targetSceneId) {
+        wsClient.moveTokenToScene(contextMenuTokenId, targetSceneId);
+      }
+      hideContextMenu();
+    } else if (action === 'move-to-scene') {
+      // Don't close menu - let user hover to see submenu
+      // Check if disabled
+      if (target.classList.contains('disabled')) {
+        return;
+      }
     }
   });
 

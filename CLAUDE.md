@@ -26,7 +26,7 @@ Open http://localhost:3000 in your browser.
 - **Real-time Sync**: All changes sync instantly across connected browsers via WebSocket
 - **No Login**: All users have full access to all features
 - **Pan and Zoom**: using right mouse button hold and scroll wheel
-- **Token Context Menu**: Right-click tokens to resize (1x1, 2x2, 3x3, 4x4 grid) or delete
+- **Token Context Menu**: Right-click tokens to resize (1x1, 2x2, 3x3, 4x4 grid), duplicate, move to another scene, or delete
 - **Multiple Scenes**: Support for multiple scenes, each with its own map, tokens, and grid settings. All clients view the same active scene (shared view).
 - **Drag-and-Drop Tokens**: Drag image files (PNG, JPEG, GIF, WebP) onto the canvas to create tokens at the drop position. Multiple files are arranged in a grid pattern.
 - **Drawing Layer**: Paint/draw on a layer above the map but below tokens. Includes brush, eraser, shapes (line, rect, ellipse), and fill bucket tools. Drawings sync in real-time and persist per-scene.
@@ -99,11 +99,8 @@ To enable GitHub Pages: repo Settings → Pages → Deploy from branch → main,
 
 ## TODO
 - garbage collect unused images / map files / drawing tiles when possible
-- moving tokens between scenes via right click menu
-- duplicate tokens via right click menu
 - when dragging a token to move it, show a preview of that to other users like we do with the line/cone/circle tools
 - fix issue in the distance text when previewing a token move / line measure tool, the outline on the "x ft" text appears to be dashed like the line instead of solid like it is in the cone and circle tools
-- draw the grid on top of the drawings layer
 
 ## Extra instructions for Claude
 - If necessary, update this file after implementing each feature, or having a discussion about features.

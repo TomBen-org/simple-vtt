@@ -135,6 +135,12 @@ function handleMessage(message: WSMessage, sender: WebSocket): void {
       stateManager.clearDrawingLayer(message.sceneId);
       broadcast(message);
       break;
+
+    case 'token:move-to-scene':
+      if (stateManager.moveTokenToScene(message.tokenId, message.targetSceneId)) {
+        broadcast(message);
+      }
+      break;
   }
 }
 

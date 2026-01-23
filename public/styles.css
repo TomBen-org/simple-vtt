@@ -162,6 +162,47 @@ label {
   margin: 4px 0;
 }
 
+/* Context menu submenu */
+.context-menu-submenu {
+  position: relative;
+}
+
+.context-menu-submenu-content {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: 0;
+  background: #1a1a2e;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 8px 0;
+  min-width: 140px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 1001;
+}
+
+.context-menu-submenu:hover .context-menu-submenu-content {
+  display: block;
+}
+
+.context-menu-submenu-content .context-menu-item {
+  white-space: nowrap;
+}
+
+.context-menu-item.submenu-trigger {
+  display: flex;
+  justify-content: space-between;
+}
+
+.context-menu-item.disabled {
+  color: #666;
+  cursor: not-allowed;
+}
+
+.context-menu-item.disabled:hover {
+  background: transparent;
+}
+
 /* Grid Controls */
 .grid-btn {
   padding: 4px 8px;

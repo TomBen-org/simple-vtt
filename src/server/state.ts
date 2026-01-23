@@ -126,6 +126,24 @@ class StateManager {
     return false;
   }
 
+  moveTokenToScene(tokenId: string, targetSceneId: string): boolean {
+    const sourceScene = this.getActiveScene();
+    if (!sourceScene) return false;
+
+    const targetScene = this.state.scenes.find(s => s.id === targetSceneId);
+    if (!targetScene) return false;
+
+    const tokenIndex = sourceScene.tokens.findIndex(t => t.id === tokenId);
+    if (tokenIndex === -1) return false;
+
+    // Remove token from source scene and add to target scene
+    const [token] = sourceScene.tokens.splice(tokenIndex, 1);
+    targetScene.tokens.push(token);
+
+    this.persist();
+    return true;
+  }
+
   // Map methods (operate on active scene)
   setMapBackground(backgroundUrl: string): void {
     const scene = this.getActiveScene();

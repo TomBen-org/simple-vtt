@@ -176,6 +176,10 @@ class WebSocketClient {
   clearDrawing(sceneId: string): void {
     this.send({ type: 'draw:clear', sceneId });
   }
+
+  moveTokenToScene(tokenId: string, targetSceneId: string): void {
+    this.send({ type: 'token:move-to-scene', tokenId, targetSceneId });
+  }
 }
 
 export const wsClient = new WebSocketClient();
