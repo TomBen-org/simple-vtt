@@ -29,6 +29,7 @@ Open http://localhost:3000 in your browser.
 - **Token Context Menu**: Right-click tokens to resize (1x1, 2x2, 3x3, 4x4 grid) or delete
 - **Multiple Scenes**: Support for multiple scenes, each with its own map, tokens, and grid settings. All clients view the same active scene (shared view).
 - **Drag-and-Drop Tokens**: Drag image files (PNG, JPEG, GIF, WebP) onto the canvas to create tokens at the drop position. Multiple files are arranged in a grid pattern.
+- **Drawing Layer**: Paint/draw on a layer above the map but below tokens. Includes brush, eraser, shapes (line, rect, ellipse), and fill bucket tools. Drawings sync in real-time and persist per-scene.
 
 ## Tech Stack
 
@@ -42,7 +43,7 @@ Open http://localhost:3000 in your browser.
 - `src/client/` - Browser-side TypeScript
 - `src/shared/` - Shared type definitions
 - `public/` - Static HTML/CSS
-- `data/` - Persisted game state and uploaded images
+- `data/` - Persisted game state, uploaded images, and drawing chunks (PNG files in data/drawings/{sceneId}/)
 
 ## npm Scripts
 
@@ -63,6 +64,21 @@ The server maintains authoritative game state. All client actions are sent to th
 3. **Measure Circle** - Click center, drag for radius
 4. **Measure Cone** - Click origin, drag for 60-degree cone
 5. **Align** - In the Grid settings panel. Draw a box over multiple grid cells, then enter the cell count along the longest side. Uses the starting corner for offset alignment.
+
+## Draw Mode
+
+Toggle Draw Mode button to reveal drawing tools. When enabled, mouse events draw instead of moving tokens.
+
+- **Brush** - Freehand drawing with selected color and size
+- **Eraser** - Erase parts of the drawing
+- **Line** - Click and drag to draw straight lines
+- **Rect** - Click and drag to draw filled rectangles
+- **Ellipse** - Click and drag to draw filled ellipses
+- **Fill** - Click to flood fill an area with the selected color (expands 3px past edges to cover antialiasing)
+- **Pick** - Click to sample a color from the canvas (samples from merged view including background, drawings, and tokens)
+- **Color picker** - Select drawing color
+- **Size slider** - Adjust brush/eraser size (1-100)
+- **Clear All** - Remove all drawing from the current scene (with confirmation)
 
 ## Configuration
 

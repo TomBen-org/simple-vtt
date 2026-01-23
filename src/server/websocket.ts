@@ -103,6 +103,34 @@ function handleMessage(message: WSMessage, sender: WebSocket): void {
 
     case 'sync':
       break;
+
+    case 'draw:stroke':
+      // Broadcast stroke to all other clients for real-time preview
+      broadcastExcept(message, sender);
+      break;
+
+    case 'draw:chunk':
+      // Save chunk and broadcast to all clients
+      const chunkVersion = stateManager.updateDrawingChunk(message.sceneId, message.chunkKey, message.data);
+      broadcast({ ...message, version: chunkVersion });
+      break;
+
+    case 'draw:sync-request':
+      // Send full drawing layer to requesting client
+      const drawingLayer = stateManager.getDrawingLayer(message.sceneId);
+      const syncResponse: WSMessage = {
+        type: 'draw:sync',
+        sceneId: message.sceneId,
+        chunks: drawingLayer.chunks,
+        version: drawingLayer.version,
+      };
+      sender.send(JSON.stringify(syncResponse));
+      break;
+
+    case 'draw:clear':
+      stateManager.clearDrawingLayer(message.sceneId);
+      broadcast(message);
+      break;
   }
 }
 
@@ -110,6 +138,15 @@ function broadcast(message: WSMessage): void {
   const data = JSON.stringify(message);
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
+      client.send(data);
+    }
+  });
+}
+
+function broadcastExcept(message: WSMessage, exclude: WebSocket): void {
+  const data = JSON.stringify(message);
+  wss.clients.forEach((client) => {
+    if (client !== exclude && client.readyState === WebSocket.OPEN) {
       client.send(data);
     }
   });

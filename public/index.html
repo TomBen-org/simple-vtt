@@ -65,6 +65,27 @@
         <button class="tool-btn" data-tool="grid-align" title="Align Grid (draw over one cell)">Align</button>
       </div>
     </div>
+
+    <div class="toolbar-section" id="draw-section">
+      <span class="section-label">Draw</span>
+      <button id="draw-mode-toggle" title="Toggle Draw Mode">Draw Mode</button>
+      <div id="draw-tools" class="hidden">
+        <button class="draw-tool-btn active" data-draw-tool="brush" title="Brush">Brush</button>
+        <button class="draw-tool-btn" data-draw-tool="eraser" title="Eraser">Eraser</button>
+        <button class="draw-tool-btn" data-draw-tool="line" title="Line">Line</button>
+        <button class="draw-tool-btn" data-draw-tool="rect" title="Rectangle">Rect</button>
+        <button class="draw-tool-btn" data-draw-tool="ellipse" title="Ellipse">Ellipse</button>
+        <button class="draw-tool-btn" data-draw-tool="fill" title="Fill Bucket">Fill</button>
+        <button class="draw-tool-btn" data-draw-tool="picker" title="Color Picker">Pick</button>
+        <input type="color" id="draw-color" value="#ff0000" title="Draw Color">
+        <label class="brush-size-label">
+          Size:
+          <input type="range" id="brush-size" min="1" max="100" value="10">
+          <span id="brush-size-value">10</span>
+        </label>
+        <button id="draw-clear" title="Clear All Drawing">Clear All</button>
+      </div>
+    </div>
   </div>
 
   <canvas id="game-canvas"></canvas>

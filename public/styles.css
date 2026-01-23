@@ -246,3 +246,88 @@ label {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Draw Tools */
+#draw-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#draw-mode-toggle {
+  padding: 6px 12px;
+}
+
+#draw-mode-toggle.active {
+  background: #4a4a6e;
+  border-color: #6a6a8e;
+}
+
+#draw-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#draw-tools.hidden {
+  display: none;
+}
+
+.draw-tool-btn {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.draw-tool-btn.active {
+  background: #4a4a6e;
+  border-color: #6a6a8e;
+}
+
+#draw-color {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+}
+
+#draw-color::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+#draw-color::-webkit-color-swatch {
+  border-radius: 2px;
+  border: none;
+}
+
+.brush-size-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #ccc;
+}
+
+#brush-size {
+  width: 80px;
+  height: 20px;
+  cursor: pointer;
+}
+
+#brush-size-value {
+  min-width: 24px;
+  text-align: center;
+}
+
+#draw-clear {
+  padding: 6px 10px;
+  font-size: 13px;
+  color: #ff6b6b;
+  border-color: #ff6b6b55;
+}
+
+#draw-clear:hover {
+  background: #3a2a2e;
+}

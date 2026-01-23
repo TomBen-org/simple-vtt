@@ -3,6 +3,7 @@ import { getTokenImage, getTokenMipmap, loadTokenImage } from './tokens.js';
 import { ToolState, getCurrentMeasurement } from './tools.js';
 import { ViewState } from './viewState.js';
 import { generateMipmaps, selectMipmap } from './mipmaps.js';
+import { DrawingLayer } from './drawing.js';
 
 // Drag and drop state for rendering preview
 export interface DragDropState {
@@ -63,7 +64,8 @@ export function render(
   viewState: ViewState,
   remoteMeasurements: Map<string, Measurement> = new Map(),
   highlightedTokenIds: Set<string> = new Set(),
-  dragDropState: DragDropState | null = null
+  dragDropState: DragDropState | null = null,
+  drawingLayer: DrawingLayer | null = null
 ): void {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -89,6 +91,11 @@ export function render(
     const targetHeight = originalHeight * viewState.zoom;
     const mipmap = selectMipmap(backgroundMipmaps, targetWidth, targetHeight);
     ctx.drawImage(mipmap, 0, 0, originalWidth, originalHeight);
+  }
+
+  // Render drawing layer (above background, below grid)
+  if (drawingLayer) {
+    drawingLayer.render(ctx, viewState);
   }
 
   if (map.gridEnabled) {

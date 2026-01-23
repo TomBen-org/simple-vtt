@@ -1,6 +1,6 @@
-import { GameState, Token, Measurement, Scene, createDefaultGameState } from '../shared/types.js';
+import { GameState, Token, Measurement, Scene, createDefaultGameState, DrawTool, DrawStroke, ChunkKey } from '../shared/types.js';
 import { wsClient } from './websocket.js';
-import { initCanvas, render, loadBackground, getCanvas, resizeCanvas, clearBackground, DragDropState } from './canvas.js';
+import { initCanvas, render, loadBackground, getCanvas, getContext, resizeCanvas, clearBackground, DragDropState } from './canvas.js';
 import { createToolState, setTool, startDrag, updateDrag, endDrag, Tool, ToolState, getCurrentMeasurement } from './tools.js';
 import { findTokenAtPoint, uploadImage, loadTokenImage } from './tokens.js';
 import {
@@ -17,9 +17,17 @@ import {
   setOnSceneDelete,
   setOnSceneRename,
   updateSceneSelector,
+  setOnDrawModeChange,
+  setOnDrawToolChange,
+  setOnDrawColorChange,
+  setOnDrawBrushSizeChange,
+  setOnDrawClear,
+  setDrawModeEnabled,
+  setDrawColor,
 } from './ui.js';
 import { createViewState, ViewState, screenToWorld, startPan, updatePan, endPan, applyZoom } from './viewState.js';
 import { getTokensInMeasurement } from './geometry.js';
+import { DrawingLayer } from './drawing.js';
 
 // UUID generator that uses crypto.randomUUID if available, falls back for insecure contexts (HTTP)
 function generateUUID(): string {
@@ -75,6 +83,11 @@ let snapToGrid = true;
 // Drag and drop state for file uploads
 let dragDropState: DragDropState | null = null;
 
+// Drawing layer
+const drawingLayer = new DrawingLayer();
+let drawModeEnabled = false;
+let isDrawing = false;
+
 // Valid image types for drag-and-drop
 const VALID_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
@@ -110,6 +123,21 @@ function init(): void {
   setupContextMenu();
   setupDragAndDrop(canvas);
 
+  // Set up drawing layer callbacks
+  drawingLayer.onStrokeUpdate = (stroke: DrawStroke) => {
+    const activeScene = getActiveScene();
+    if (activeScene) {
+      wsClient.sendDrawStroke(activeScene.id, stroke);
+    }
+  };
+
+  drawingLayer.onChunkUpdate = (chunkKey: ChunkKey, data: string) => {
+    const activeScene = getActiveScene();
+    if (activeScene) {
+      wsClient.sendDrawChunk(activeScene.id, chunkKey, data);
+    }
+  };
+
   wsClient.onMessage((message) => {
     switch (message.type) {
       case 'sync':
@@ -123,6 +151,8 @@ function init(): void {
             clearBackground();
           }
           syncScene.tokens.forEach(token => loadTokenImage(token));
+          // Request drawing layer sync
+          wsClient.requestDrawingSync(syncScene.id);
         }
         updateSceneSelector(gameState.scenes, gameState.activeSceneId);
         break;
@@ -221,6 +251,9 @@ function init(): void {
         // Clear measurements on scene switch
         remoteMeasurements.clear();
         wsClient.clearMeasurement(playerId);
+        // Clear and reload drawing layer
+        drawingLayer.clear();
+        wsClient.requestDrawingSync(message.sceneId);
         const switchedScene = getActiveScene();
         if (switchedScene) {
           if (switchedScene.map.backgroundUrl) {
@@ -242,6 +275,34 @@ function init(): void {
           renamedScene.name = message.name;
         }
         updateSceneSelector(gameState.scenes, gameState.activeSceneId);
+        break;
+
+      case 'draw:stroke':
+        // Apply remote stroke for real-time preview
+        if (message.sceneId === gameState.activeSceneId) {
+          drawingLayer.applyRemoteStroke(message.stroke);
+        }
+        break;
+
+      case 'draw:chunk':
+        // Load updated chunk
+        if (message.sceneId === gameState.activeSceneId) {
+          drawingLayer.loadChunk(message.chunkKey, message.data);
+        }
+        break;
+
+      case 'draw:sync':
+        // Load all chunks for the scene
+        if (message.sceneId === gameState.activeSceneId) {
+          drawingLayer.loadAllChunks(message.chunks);
+        }
+        break;
+
+      case 'draw:clear':
+        // Clear drawing layer
+        if (message.sceneId === gameState.activeSceneId) {
+          drawingLayer.clear();
+        }
         break;
     }
   });
@@ -277,7 +338,7 @@ function init(): void {
       });
     }
 
-    render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds, dragDropState);
+    render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds, dragDropState, drawingLayer);
     requestAnimationFrame(renderLoop);
   }
   renderLoop();
@@ -349,6 +410,37 @@ function setupEventHandlers(): void {
   setOnSceneRename((sceneId: string, name: string) => {
     wsClient.renameScene(sceneId, name);
   });
+
+  // Drawing handlers
+  setOnDrawModeChange((enabled: boolean) => {
+    drawModeEnabled = enabled;
+    if (!enabled) {
+      // Reset to move tool when exiting draw mode
+      setTool(toolState, 'move');
+      setActiveTool('move');
+      // Hide cursor preview
+      drawingLayer.updateCursor(0, 0, false);
+    }
+  });
+
+  setOnDrawToolChange((tool: DrawTool) => {
+    drawingLayer.setBrush({ tool });
+  });
+
+  setOnDrawColorChange((color: string) => {
+    drawingLayer.setBrush({ color });
+  });
+
+  setOnDrawBrushSizeChange((size: number) => {
+    drawingLayer.setBrush({ size });
+  });
+
+  setOnDrawClear(() => {
+    const activeScene = getActiveScene();
+    if (activeScene) {
+      wsClient.clearDrawing(activeScene.id);
+    }
+  });
 }
 
 function setupCanvasEvents(canvas: HTMLCanvasElement): void {
@@ -372,6 +464,36 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const world = screenToWorld(viewState, screenX, screenY);
     const x = world.x;
     const y = world.y;
+
+    // Drawing mode handling
+    if (drawModeEnabled) {
+      const brush = drawingLayer.getBrush();
+      if (brush.tool === 'fill') {
+        // Flood fill on click
+        drawingLayer.floodFill(x, y);
+        // Notify chunks affected by fill
+        const activeSceneFill = getActiveScene();
+        if (activeSceneFill) {
+          // For fill, we request a sync since we don't know which chunks were affected
+          // The server will handle saving the chunks
+        }
+      } else if (brush.tool === 'picker') {
+        // Sample color from the canvas (merged view of background, drawings, tokens)
+        const ctx = getContext();
+        const pixelData = ctx.getImageData(screenX, screenY, 1, 1).data;
+        const r = pixelData[0];
+        const g = pixelData[1];
+        const b = pixelData[2];
+        const hexColor = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+        setDrawColor(hexColor);
+        drawingLayer.setBrush({ color: hexColor });
+      } else {
+        // Start drawing stroke
+        isDrawing = true;
+        drawingLayer.beginStroke(x, y);
+      }
+      return;
+    }
 
     if (toolState.currentTool === 'move') {
       const activeSceneMouseDown = getActiveScene();
@@ -415,6 +537,21 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const world = screenToWorld(viewState, screenX, screenY);
     const x = world.x;
     const y = world.y;
+
+    // Update drawing cursor position
+    if (drawModeEnabled) {
+      const brush = drawingLayer.getBrush();
+      const showCursor = brush.tool === 'brush' || brush.tool === 'eraser';
+      drawingLayer.updateCursor(x, y, showCursor);
+    } else {
+      drawingLayer.updateCursor(0, 0, false);
+    }
+
+    // Drawing mode handling
+    if (drawModeEnabled && isDrawing) {
+      drawingLayer.continueStroke(x, y);
+      return;
+    }
 
     if (toolState.isDragging) {
       if (toolState.currentTool === 'move' && draggedToken) {
@@ -469,6 +606,13 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     if (e.button === 2) {
       isRightMouseDown = false;
       endPan(viewState);
+      return;
+    }
+
+    // Drawing mode handling
+    if (drawModeEnabled && isDrawing) {
+      isDrawing = false;
+      drawingLayer.endStroke();
       return;
     }
 
@@ -541,6 +685,11 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const cursorY = e.clientY - rect.top;
     applyZoom(viewState, e.deltaY, cursorX, cursorY);
   }, { passive: false });
+
+  // Hide drawing cursor when leaving canvas
+  canvas.addEventListener('mouseleave', () => {
+    drawingLayer.updateCursor(0, 0, false);
+  });
 
   // Track Ctrl key for snap override
   document.addEventListener('keydown', (e) => {

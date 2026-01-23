@@ -8,6 +8,53 @@ export interface Token {
   name?: string;
 }
 
+// Drawing layer types
+export const CHUNK_SIZE = 512;
+export type ChunkKey = string;  // e.g., "0,0", "-1,2"
+
+export type DrawTool = 'brush' | 'eraser' | 'rect' | 'ellipse' | 'line' | 'fill' | 'picker';
+
+export interface DrawStroke {
+  id: string;
+  tool: DrawTool;
+  color: string;
+  brushSize: number;
+  points: { x: number; y: number }[];
+  // For shape tools (rect, ellipse, line), points[0] is start, points[1] is end
+}
+
+export interface DrawingLayer {
+  chunks: Record<ChunkKey, string>;  // base64 PNG
+  version: number;
+}
+
+// Helper functions for chunk coordinates
+export function worldToChunkKey(x: number, y: number): ChunkKey {
+  const chunkX = Math.floor(x / CHUNK_SIZE);
+  const chunkY = Math.floor(y / CHUNK_SIZE);
+  return `${chunkX},${chunkY}`;
+}
+
+export function chunkKeyToWorld(key: ChunkKey): { x: number; y: number } {
+  const [chunkX, chunkY] = key.split(',').map(Number);
+  return { x: chunkX * CHUNK_SIZE, y: chunkY * CHUNK_SIZE };
+}
+
+export function getChunksInRect(x1: number, y1: number, x2: number, y2: number): ChunkKey[] {
+  const minX = Math.floor(Math.min(x1, x2) / CHUNK_SIZE);
+  const maxX = Math.floor(Math.max(x1, x2) / CHUNK_SIZE);
+  const minY = Math.floor(Math.min(y1, y2) / CHUNK_SIZE);
+  const maxY = Math.floor(Math.max(y1, y2) / CHUNK_SIZE);
+
+  const keys: ChunkKey[] = [];
+  for (let cx = minX; cx <= maxX; cx++) {
+    for (let cy = minY; cy <= maxY; cy++) {
+      keys.push(`${cx},${cy}`);
+    }
+  }
+  return keys;
+}
+
 export interface MapSettings {
   backgroundUrl: string | null;
   gridEnabled: boolean;
@@ -21,6 +68,7 @@ export interface Scene {
   name: string;
   tokens: Token[];
   map: MapSettings;
+  drawing?: DrawingLayer;
 }
 
 export interface GameState {
@@ -51,7 +99,12 @@ export type WSMessage =
   | { type: 'scene:create'; scene: Scene }
   | { type: 'scene:delete'; sceneId: string }
   | { type: 'scene:switch'; sceneId: string }
-  | { type: 'scene:rename'; sceneId: string; name: string };
+  | { type: 'scene:rename'; sceneId: string; name: string }
+  | { type: 'draw:stroke'; sceneId: string; stroke: DrawStroke }
+  | { type: 'draw:chunk'; sceneId: string; chunkKey: ChunkKey; data: string; version: number }
+  | { type: 'draw:sync-request'; sceneId: string }
+  | { type: 'draw:sync'; sceneId: string; chunks: Record<ChunkKey, string>; version: number }
+  | { type: 'draw:clear'; sceneId: string };
 
 export const DEFAULT_MAP_SETTINGS: MapSettings = {
   backgroundUrl: null,

@@ -1,5 +1,5 @@
-import { GameState, Token, Scene, DEFAULT_MAP_SETTINGS, generateId } from '../shared/types';
-import { loadState, saveState } from './persistence';
+import { GameState, Token, Scene, DEFAULT_MAP_SETTINGS, generateId, ChunkKey, DrawingLayer } from '../shared/types';
+import { loadState, saveState, saveChunk, loadAllChunks, clearSceneDrawing, deleteChunk } from './persistence';
 
 class StateManager {
   private state: GameState;
@@ -150,6 +150,63 @@ class StateManager {
       scene.map.gridOffsetY = offsetY;
     }
     this.persist();
+  }
+
+  // Drawing layer methods
+  updateDrawingChunk(sceneId: string, chunkKey: ChunkKey, data: string): number {
+    const scene = this.state.scenes.find(s => s.id === sceneId);
+    if (!scene) return 0;
+
+    // Initialize drawing layer if needed
+    if (!scene.drawing) {
+      scene.drawing = { chunks: {}, version: 0 };
+    }
+
+    // Update chunk in memory
+    scene.drawing.chunks[chunkKey] = data;
+    scene.drawing.version = Date.now();
+
+    // Save to disk
+    saveChunk(sceneId, chunkKey, data);
+
+    return scene.drawing.version;
+  }
+
+  deleteDrawingChunk(sceneId: string, chunkKey: ChunkKey): number {
+    const scene = this.state.scenes.find(s => s.id === sceneId);
+    if (!scene || !scene.drawing) return 0;
+
+    // Remove chunk from memory
+    delete scene.drawing.chunks[chunkKey];
+    scene.drawing.version = Date.now();
+
+    // Delete from disk
+    deleteChunk(sceneId, chunkKey);
+
+    return scene.drawing.version;
+  }
+
+  getDrawingLayer(sceneId: string): DrawingLayer {
+    const scene = this.state.scenes.find(s => s.id === sceneId);
+
+    // Load from disk if not in memory
+    if (!scene?.drawing || Object.keys(scene.drawing.chunks).length === 0) {
+      const loaded = loadAllChunks(sceneId);
+      if (scene) {
+        scene.drawing = loaded;
+      }
+      return loaded;
+    }
+
+    return scene.drawing;
+  }
+
+  clearDrawingLayer(sceneId: string): void {
+    const scene = this.state.scenes.find(s => s.id === sceneId);
+    if (scene) {
+      scene.drawing = { chunks: {}, version: Date.now() };
+    }
+    clearSceneDrawing(sceneId);
   }
 
   private persist(): void {

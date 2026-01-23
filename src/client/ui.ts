@@ -1,5 +1,5 @@
 import { Tool } from './tools.js';
-import { MapSettings, Scene } from '../shared/types.js';
+import { MapSettings, Scene, DrawTool } from '../shared/types.js';
 
 type ToolChangeHandler = (tool: Tool) => void;
 type MapUploadHandler = (file: File) => void;
@@ -10,6 +10,11 @@ type SceneChangeHandler = (sceneId: string) => void;
 type SceneCreateHandler = (name: string) => void;
 type SceneDeleteHandler = (sceneId: string) => void;
 type SceneRenameHandler = (sceneId: string, name: string) => void;
+type DrawModeChangeHandler = (enabled: boolean) => void;
+type DrawToolChangeHandler = (tool: DrawTool) => void;
+type DrawColorChangeHandler = (color: string) => void;
+type DrawBrushSizeChangeHandler = (size: number) => void;
+type DrawClearHandler = () => void;
 
 let onToolChange: ToolChangeHandler | null = null;
 let onMapUpload: MapUploadHandler | null = null;
@@ -20,6 +25,11 @@ let onSceneChange: SceneChangeHandler | null = null;
 let onSceneCreate: SceneCreateHandler | null = null;
 let onSceneDelete: SceneDeleteHandler | null = null;
 let onSceneRename: SceneRenameHandler | null = null;
+let onDrawModeChange: DrawModeChangeHandler | null = null;
+let onDrawToolChange: DrawToolChangeHandler | null = null;
+let onDrawColorChange: DrawColorChangeHandler | null = null;
+let onDrawBrushSizeChange: DrawBrushSizeChangeHandler | null = null;
+let onDrawClear: DrawClearHandler | null = null;
 
 export function initUI(): void {
   document.querySelectorAll('.tool-btn').forEach(btn => {
@@ -196,6 +206,65 @@ export function initUI(): void {
       }
     });
   }
+
+  // Draw mode toggle
+  const drawModeToggle = document.getElementById('draw-mode-toggle');
+  const drawTools = document.getElementById('draw-tools');
+  if (drawModeToggle && drawTools) {
+    drawModeToggle.addEventListener('click', () => {
+      const isActive = drawModeToggle.classList.toggle('active');
+      drawTools.classList.toggle('hidden', !isActive);
+      if (onDrawModeChange) {
+        onDrawModeChange(isActive);
+      }
+    });
+  }
+
+  // Draw tool buttons
+  document.querySelectorAll('.draw-tool-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tool = btn.getAttribute('data-draw-tool') as DrawTool;
+      if (tool && onDrawToolChange) {
+        setActiveDrawTool(tool);
+        onDrawToolChange(tool);
+      }
+    });
+  });
+
+  // Draw color picker
+  const drawColorInput = document.getElementById('draw-color') as HTMLInputElement;
+  if (drawColorInput) {
+    drawColorInput.addEventListener('input', () => {
+      if (onDrawColorChange) {
+        onDrawColorChange(drawColorInput.value);
+      }
+    });
+  }
+
+  // Brush size slider
+  const brushSizeInput = document.getElementById('brush-size') as HTMLInputElement;
+  const brushSizeValue = document.getElementById('brush-size-value');
+  if (brushSizeInput && brushSizeValue) {
+    brushSizeInput.addEventListener('input', () => {
+      const size = parseInt(brushSizeInput.value, 10);
+      brushSizeValue.textContent = size.toString();
+      if (onDrawBrushSizeChange) {
+        onDrawBrushSizeChange(size);
+      }
+    });
+  }
+
+  // Draw clear button
+  const drawClearBtn = document.getElementById('draw-clear');
+  if (drawClearBtn) {
+    drawClearBtn.addEventListener('click', () => {
+      if (confirm('Clear all drawing on this scene? This cannot be undone.')) {
+        if (onDrawClear) {
+          onDrawClear();
+        }
+      }
+    });
+  }
 }
 
 export function setActiveTool(tool: Tool): void {
@@ -205,6 +274,26 @@ export function setActiveTool(tool: Tool): void {
       btn.classList.add('active');
     }
   });
+}
+
+export function setActiveDrawTool(tool: DrawTool): void {
+  document.querySelectorAll('.draw-tool-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.getAttribute('data-draw-tool') === tool) {
+      btn.classList.add('active');
+    }
+  });
+}
+
+export function setDrawModeEnabled(enabled: boolean): void {
+  const drawModeToggle = document.getElementById('draw-mode-toggle');
+  const drawTools = document.getElementById('draw-tools');
+  if (drawModeToggle) {
+    drawModeToggle.classList.toggle('active', enabled);
+  }
+  if (drawTools) {
+    drawTools.classList.toggle('hidden', !enabled);
+  }
 }
 
 export function updateUIFromState(map: MapSettings): void {
@@ -278,5 +367,32 @@ export function updateSceneSelector(scenes: Scene[], activeSceneId: string): voi
   const deleteBtn = document.getElementById('scene-delete') as HTMLButtonElement;
   if (deleteBtn) {
     deleteBtn.disabled = scenes.length <= 1;
+  }
+}
+
+export function setOnDrawModeChange(handler: DrawModeChangeHandler): void {
+  onDrawModeChange = handler;
+}
+
+export function setOnDrawToolChange(handler: DrawToolChangeHandler): void {
+  onDrawToolChange = handler;
+}
+
+export function setOnDrawColorChange(handler: DrawColorChangeHandler): void {
+  onDrawColorChange = handler;
+}
+
+export function setOnDrawBrushSizeChange(handler: DrawBrushSizeChangeHandler): void {
+  onDrawBrushSizeChange = handler;
+}
+
+export function setOnDrawClear(handler: DrawClearHandler): void {
+  onDrawClear = handler;
+}
+
+export function setDrawColor(color: string): void {
+  const drawColorInput = document.getElementById('draw-color') as HTMLInputElement;
+  if (drawColorInput) {
+    drawColorInput.value = color;
   }
 }
