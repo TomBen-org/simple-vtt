@@ -33,7 +33,14 @@ class WebSocketClient {
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
+    // Include pathname for reverse proxy subdirectory support
+    // Get directory path, ensuring it ends with / for nginx location matching
+    let basePath = window.location.pathname;
+    // Remove filename if present (e.g., /vtt/index.html -> /vtt/)
+    if (!basePath.endsWith('/')) {
+      basePath = basePath.replace(/\/[^/]*$/, '/');
+    }
+    const wsUrl = `${protocol}//${window.location.host}${basePath}`;
 
     console.log('WebSocket connecting to', wsUrl);
     this.isConnecting = true;

@@ -54,7 +54,7 @@ export function findTokenAtPoint(x: number, y: number, tokens: Token[], gridSize
 }
 
 export async function uploadImage(file: File): Promise<string> {
-  const response = await fetch('/api/upload', {
+  const response = await fetch('api/upload', {
     method: 'POST',
     body: file,
     headers: {

@@ -26,7 +26,7 @@ app.post('/api/upload', express.raw({ type: 'image/*', limit: '10mb' }), (req, r
 
   fs.writeFileSync(filepath, req.body);
 
-  res.json({ url: `/uploads/${filename}` });
+  res.json({ url: `uploads/${filename}` });
 });
 
 const server = createServer(app);
