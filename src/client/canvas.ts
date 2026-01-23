@@ -29,8 +29,22 @@ export function initCanvas(canvasElement: HTMLCanvasElement): void {
 }
 
 export function resizeCanvas(): void {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight - 60;
+  const isMobile = document.body.classList.contains('mobile-mode');
+  const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+
+  if (isMobile && isLandscape) {
+    // Landscape mobile: toolbar on left side (70px)
+    canvas.width = window.innerWidth - 70;
+    canvas.height = window.innerHeight;
+  } else if (isMobile) {
+    // Portrait mobile: toolbar on top (70px)
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight - 70;
+  } else {
+    // Desktop: toolbar on top (60px)
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight - 60;
+  }
 }
 
 export function getCanvas(): HTMLCanvasElement {
@@ -108,11 +122,11 @@ export function render(
   });
 
   // Draw local measurement
-  drawMeasurement(map, toolState);
+  drawMeasurement(map, toolState, viewState);
 
   // Draw remote measurements
   remoteMeasurements.forEach((measurement) => {
-    drawRemoteMeasurement(map, measurement);
+    drawRemoteMeasurement(map, measurement, viewState);
   });
 
   // Draw drag and drop preview
@@ -204,20 +218,25 @@ function drawToken(token: Token, selected: boolean, highlighted: boolean, gridSi
   }
 }
 
-function drawMeasurement(map: MapSettings, toolState: ToolState): void {
+function drawMeasurement(map: MapSettings, toolState: ToolState, viewState: ViewState): void {
   const measurement = getCurrentMeasurement(toolState);
   if (!measurement) return;
 
   const { startX, startY, endX, endY, tool } = measurement;
   const gridSize = map.gridSize;
   const feetPerCell = 5; // 1 grid cell = 5 feet
+  const zoom = viewState.zoom;
+
+  // Scale factors for constant screen-space size
+  const lineWidth = 2 / zoom;
+  const dashSize = 5 / zoom;
 
   ctx.save();
 
   if (tool === 'move' || tool === 'line') {
     ctx.strokeStyle = tool === 'move' ? '#00ff00' : '#ffff00';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = lineWidth;
+    ctx.setLineDash([dashSize, dashSize]);
     ctx.beginPath();
     ctx.moveTo(startX, startY);
     ctx.lineTo(endX, endY);
@@ -225,19 +244,19 @@ function drawMeasurement(map: MapSettings, toolState: ToolState): void {
 
     const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
     const feet = (distance / gridSize) * feetPerCell;
-    drawDistanceLabel(endX, endY - 10, feet);
+    drawDistanceLabel(endX, endY - 10 / zoom, feet, undefined, zoom);
   } else if (tool === 'circle') {
     const radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
     ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)';
     ctx.fillStyle = 'rgba(0, 150, 255, 0.2)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = lineWidth;
     ctx.beginPath();
     ctx.arc(startX, startY, radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
     const feet = (radius / gridSize) * feetPerCell;
-    drawDistanceLabel(startX, startY, feet, 'radius');
+    drawDistanceLabel(startX, startY, feet, 'radius', zoom);
   } else if (tool === 'cone') {
     const dx = endX - startX;
     const dy = endY - startY;
@@ -247,7 +266,7 @@ function drawMeasurement(map: MapSettings, toolState: ToolState): void {
 
     ctx.strokeStyle = 'rgba(255, 100, 0, 0.8)';
     ctx.fillStyle = 'rgba(255, 100, 0, 0.2)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = lineWidth;
 
     ctx.beginPath();
     ctx.moveTo(startX, startY);
@@ -257,7 +276,7 @@ function drawMeasurement(map: MapSettings, toolState: ToolState): void {
     ctx.stroke();
 
     const feet = (length / gridSize) * feetPerCell;
-    drawDistanceLabel(endX, endY, feet, 'length');
+    drawDistanceLabel(endX, endY, feet, 'length', zoom);
   } else if (tool === 'grid-align') {
     // Draw grid alignment preview box
     const minX = Math.min(startX, endX);
@@ -267,7 +286,7 @@ function drawMeasurement(map: MapSettings, toolState: ToolState): void {
 
     ctx.strokeStyle = 'rgba(0, 255, 128, 0.8)';
     ctx.fillStyle = 'rgba(0, 255, 128, 0.2)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = lineWidth;
     ctx.setLineDash([]);
 
     ctx.beginPath();
@@ -275,41 +294,48 @@ function drawMeasurement(map: MapSettings, toolState: ToolState): void {
     ctx.fill();
     ctx.stroke();
 
-    // Show size label with dimensions
-    ctx.font = 'bold 14px Arial';
+    // Show size label with dimensions (constant screen size)
+    const fontSize = 14 / zoom;
+    ctx.font = `bold ${fontSize}px Arial`;
     ctx.fillStyle = 'white';
     ctx.strokeStyle = 'black';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3 / zoom;
     const text = `${Math.round(width)} × ${Math.round(height)} px`;
-    ctx.strokeText(text, minX + 5, minY + 20);
-    ctx.fillText(text, minX + 5, minY + 20);
+    ctx.strokeText(text, minX + 5 / zoom, minY + 20 / zoom);
+    ctx.fillText(text, minX + 5 / zoom, minY + 20 / zoom);
   }
 
   ctx.restore();
 }
 
-function drawDistanceLabel(x: number, y: number, feet: number, label?: string): void {
+function drawDistanceLabel(x: number, y: number, feet: number, label: string | undefined, zoom: number): void {
   const text = label ? `${feet.toFixed(1)} ft ${label}` : `${feet.toFixed(1)} ft`;
-  ctx.font = 'bold 14px Arial';
+  const fontSize = 14 / zoom;
+  ctx.font = `bold ${fontSize}px Arial`;
   ctx.fillStyle = 'white';
   ctx.strokeStyle = 'black';
-  ctx.lineWidth = 3;
-  ctx.strokeText(text, x + 5, y);
-  ctx.fillText(text, x + 5, y);
+  ctx.lineWidth = 3 / zoom;
+  ctx.strokeText(text, x + 5 / zoom, y);
+  ctx.fillText(text, x + 5 / zoom, y);
 }
 
-function drawRemoteMeasurement(map: MapSettings, measurement: Measurement): void {
+function drawRemoteMeasurement(map: MapSettings, measurement: Measurement, viewState: ViewState): void {
   const { startX, startY, endX, endY, tool } = measurement;
   const gridSize = map.gridSize;
   const feetPerCell = 5; // 1 grid cell = 5 feet
+  const zoom = viewState.zoom;
+
+  // Scale factors for constant screen-space size
+  const lineWidth = 2 / zoom;
+  const dashSize = 5 / zoom;
 
   ctx.save();
 
   if (tool === 'line') {
     // Purple for remote line measurements
     ctx.strokeStyle = '#a855f7';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = lineWidth;
+    ctx.setLineDash([dashSize, dashSize]);
     ctx.beginPath();
     ctx.moveTo(startX, startY);
     ctx.lineTo(endX, endY);
@@ -317,20 +343,20 @@ function drawRemoteMeasurement(map: MapSettings, measurement: Measurement): void
 
     const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
     const feet = (distance / gridSize) * feetPerCell;
-    drawRemoteDistanceLabel(endX, endY - 10, feet);
+    drawRemoteDistanceLabel(endX, endY - 10 / zoom, feet, undefined, zoom);
   } else if (tool === 'circle') {
     const radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
     // Purple for remote circle measurements
     ctx.strokeStyle = 'rgba(168, 85, 247, 0.8)';
     ctx.fillStyle = 'rgba(168, 85, 247, 0.2)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = lineWidth;
     ctx.beginPath();
     ctx.arc(startX, startY, radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
     const feet = (radius / gridSize) * feetPerCell;
-    drawRemoteDistanceLabel(startX, startY, feet, 'radius');
+    drawRemoteDistanceLabel(startX, startY, feet, 'radius', zoom);
   } else if (tool === 'cone') {
     const dx = endX - startX;
     const dy = endY - startY;
@@ -341,7 +367,7 @@ function drawRemoteMeasurement(map: MapSettings, measurement: Measurement): void
     // Purple for remote cone measurements
     ctx.strokeStyle = 'rgba(168, 85, 247, 0.8)';
     ctx.fillStyle = 'rgba(168, 85, 247, 0.2)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = lineWidth;
 
     ctx.beginPath();
     ctx.moveTo(startX, startY);
@@ -351,20 +377,21 @@ function drawRemoteMeasurement(map: MapSettings, measurement: Measurement): void
     ctx.stroke();
 
     const feet = (length / gridSize) * feetPerCell;
-    drawRemoteDistanceLabel(endX, endY, feet, 'length');
+    drawRemoteDistanceLabel(endX, endY, feet, 'length', zoom);
   }
 
   ctx.restore();
 }
 
-function drawRemoteDistanceLabel(x: number, y: number, feet: number, label?: string): void {
+function drawRemoteDistanceLabel(x: number, y: number, feet: number, label: string | undefined, zoom: number): void {
   const text = label ? `${feet.toFixed(1)} ft ${label}` : `${feet.toFixed(1)} ft`;
-  ctx.font = 'bold 14px Arial';
+  const fontSize = 14 / zoom;
+  ctx.font = `bold ${fontSize}px Arial`;
   ctx.fillStyle = '#a855f7';
   ctx.strokeStyle = 'black';
-  ctx.lineWidth = 3;
-  ctx.strokeText(text, x + 5, y);
-  ctx.fillText(text, x + 5, y);
+  ctx.lineWidth = 3 / zoom;
+  ctx.strokeText(text, x + 5 / zoom, y);
+  ctx.fillText(text, x + 5 / zoom, y);
 }
 
 function drawDragDropPreview(dragDropState: DragDropState, gridSize: number): void {

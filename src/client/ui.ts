@@ -373,6 +373,9 @@ export function setMobileMode(enabled: boolean): void {
       onToolChange('move');
     }
   }
+
+  // Trigger canvas resize to account for different toolbar layouts
+  window.dispatchEvent(new Event('resize'));
 }
 
 export function getIsMobileMode(): boolean {

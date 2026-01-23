@@ -448,3 +448,37 @@ body.mobile-mode #mobile-toolbar {
 body.mobile-mode .context-menu {
   display: none !important;
 }
+
+/* Fullscreen button icon toggle */
+#fullscreen-btn svg {
+  width: 28px;
+  height: 28px;
+}
+
+/* Landscape mode on mobile - vertical toolbar on left */
+@media (orientation: landscape) and (pointer: coarse) {
+  body.mobile-mode #mobile-toolbar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 70px;
+    height: auto;
+    flex-direction: column;
+    border-bottom: none;
+    border-right: 1px solid #333;
+    padding: 10px;
+    z-index: 100;
+  }
+}
+
+/* Portrait mode on mobile - ensure toolbar is fixed at top */
+@media (orientation: portrait) and (pointer: coarse) {
+  body.mobile-mode #mobile-toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+  }
+}

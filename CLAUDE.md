@@ -93,10 +93,12 @@ Toggle Draw Mode button to reveal drawing tools. When enabled, mouse events draw
 The app automatically detects touch input and switches to a mobile-optimized UI:
 
 - **Automatic detection**: Uses `(pointer: coarse)` media query on load, then dynamically switches based on actual input type (touch vs mouse)
-- **Mobile toolbar**: 5 large (50px) buttons with SVG icons: Pan/Zoom, Move, Line, Circle, Cone
-- **Pan/Zoom mode**: One-finger drag to pan, pinch with two fingers to zoom
-- **Move mode**: Touch a token to drag it; touching the background does nothing
+- **Mobile toolbar**: 6 large (50px) buttons with SVG icons: Pan/Zoom, Move, Line, Circle, Cone, Fullscreen
+- **Pan/Zoom mode**: One-finger drag to pan, pinch with two fingers to zoom (pinch only works in pan-zoom mode)
+- **Move mode**: Long-press on a token to start dragging it; touching the background does nothing
 - **Measurement tools**: Touch and drag to measure with line, circle, or cone
+- **Fullscreen button**: Toggle fullscreen mode for immersive play
+- **Landscape layout**: In landscape orientation, toolbar moves to left side vertically
 - **No context menu**: Right-click context menu is disabled on mobile
 - **No drawing mode**: Drawing tools are hidden on mobile
 - **Switching back**: Using a mouse automatically switches back to desktop mode
@@ -115,10 +117,8 @@ To enable GitHub Pages: repo Settings → Pages → Deploy from branch → main,
 - garbage collect unused images / map files / drawing tiles when possible
 - when dragging a token to move it, show a preview of that to other users like we do with the line/cone/circle tools
 - fix issue in the distance text when previewing a token move / line measure tool, the outline on the "x ft" text appears to be dashed like the line instead of solid like it is in the cone and circle tools
-- measuring text and line/circle/cone outlines are scaled based on zoom, which means it is not readable when zoomed out. Make them a constant size in screen space, regardless of zoom level.
-- on some browsers dragging on the screen scrolls the browser ui back up to the address bar
-- long press on a token during move mode should swap to token move mode with that token being moved
-- zoom should not work when in tools that are not the pan/zoom tool.
+- in fullscreen mode on mobile with landscape orientation, the buttons often are off screen. Maybe we use vh units for icon size in that configuration.
+- the numbers when using measuring tools are right under my finger. On both desktop and mobile, put these numbers in the middle of the template (middle of circle, middle of cone, middle of line)
 
 ## Extra instructions for Claude
 - If necessary, update this file after implementing each feature, or having a discussion about features.

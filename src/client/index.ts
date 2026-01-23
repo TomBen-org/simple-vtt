@@ -103,6 +103,11 @@ const VALID_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 const activePointers = new Map<number, { x: number; y: number }>();
 let lastPinchDistance = 0;
 
+// Long press handling
+let longPressTimer: number | null = null;
+let longPressTriggered = false;
+const LONG_PRESS_DURATION = 500; // ms
+
 function isValidImageFile(file: File): boolean {
   return VALID_IMAGE_TYPES.includes(file.type);
 }
@@ -140,6 +145,9 @@ function init(): void {
     setMobileMode(true);
     setTool(toolState, 'pan-zoom');
   }
+
+  // Fullscreen button handler
+  setupFullscreenButton();
 
   // Set up drawing layer callbacks
   drawingLayer.onStrokeUpdate = (stroke: DrawStroke) => {
@@ -543,9 +551,16 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
       return;
     }
 
-    // Handle pinch-to-zoom start (second finger)
+    // Handle pinch-to-zoom start (second finger) - only in pan-zoom mode
     if (activePointers.size === 2) {
-      lastPinchDistance = getPinchDistance();
+      // Clear any long press timer when second finger touches
+      if (longPressTimer !== null) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+      if (toolState.currentTool === 'pan-zoom') {
+        lastPinchDistance = getPinchDistance();
+      }
       return;
     }
 
@@ -591,7 +606,35 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
       return;
     }
 
-    if (toolState.currentTool === 'move') {
+    // Long press detection for mobile - works in move mode to initiate token drag
+    if (getIsMobileMode() && toolState.currentTool === 'move') {
+      const activeSceneLongPress = getActiveScene();
+      if (activeSceneLongPress) {
+        const token = findTokenAtPoint(x, y, activeSceneLongPress.tokens, activeSceneLongPress.map.gridSize);
+        if (token) {
+          // Clear any existing long press timer
+          if (longPressTimer !== null) {
+            clearTimeout(longPressTimer);
+          }
+          longPressTriggered = false;
+
+          // Start long press timer
+          longPressTimer = window.setTimeout(() => {
+            longPressTriggered = true;
+            longPressTimer = null;
+
+            // Start dragging the token
+            selectedTokenId = token.id;
+            draggedToken = token;
+            dragOffsetX = x - token.x;
+            dragOffsetY = y - token.y;
+            const tokenWidth = token.gridWidth * activeSceneLongPress.map.gridSize;
+            const tokenHeight = token.gridHeight * activeSceneLongPress.map.gridSize;
+            startDrag(toolState, token.x + tokenWidth / 2, token.y + tokenHeight / 2);
+          }, LONG_PRESS_DURATION);
+        }
+      }
+    } else if (toolState.currentTool === 'move') {
       const activeSceneMouseDown = getActiveScene();
       if (activeSceneMouseDown) {
         const token = findTokenAtPoint(x, y, activeSceneMouseDown.tokens, activeSceneMouseDown.map.gridSize);
@@ -624,8 +667,8 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
       activePointers.set(e.pointerId, { x: screenX, y: screenY });
     }
 
-    // Handle pinch-to-zoom
-    if (activePointers.size === 2 && lastPinchDistance > 0) {
+    // Handle pinch-to-zoom (only in pan-zoom mode)
+    if (activePointers.size === 2 && lastPinchDistance > 0 && toolState.currentTool === 'pan-zoom') {
       const newDistance = getPinchDistance();
       const center = getPinchCenter();
 
@@ -638,6 +681,19 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
 
       lastPinchDistance = newDistance;
       return;
+    }
+
+    // Clear long press if pointer moves significantly
+    if (longPressTimer !== null) {
+      const startPointer = activePointers.values().next().value;
+      if (startPointer) {
+        const dx = screenX - startPointer.x;
+        const dy = screenY - startPointer.y;
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }
     }
 
     // Handle panning (right-click or pan-zoom mode)
@@ -723,6 +779,12 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     // Remove pointer from tracking
     activePointers.delete(e.pointerId);
 
+    // Clear long press timer
+    if (longPressTimer !== null) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+
     // Reset pinch distance when fewer than 2 fingers
     if (activePointers.size < 2) {
       lastPinchDistance = 0;
@@ -782,6 +844,13 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
   canvas.addEventListener('pointercancel', (e) => {
     // Clean up on pointer cancel (e.g., touch interrupted)
     activePointers.delete(e.pointerId);
+
+    // Clear long press timer
+    if (longPressTimer !== null) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+
     if (activePointers.size < 2) {
       lastPinchDistance = 0;
     }
@@ -1097,5 +1166,52 @@ function setupDragAndDrop(canvas: HTMLCanvasElement): void {
     dragDropState = null;
   });
 }
+
+function setupFullscreenButton(): void {
+  const fullscreenBtn = document.getElementById('fullscreen-btn');
+  const fullscreenIcon = document.getElementById('fullscreen-icon');
+  const exitFullscreenIcon = document.getElementById('exit-fullscreen-icon');
+
+  if (!fullscreenBtn) return;
+
+  function updateFullscreenIcons(): void {
+    const isFullscreen = !!document.fullscreenElement;
+    if (fullscreenIcon) fullscreenIcon.style.display = isFullscreen ? 'none' : 'block';
+    if (exitFullscreenIcon) exitFullscreenIcon.style.display = isFullscreen ? 'block' : 'none';
+    document.body.classList.toggle('fullscreen-mode', isFullscreen);
+  }
+
+  fullscreenBtn.addEventListener('click', async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (error) {
+      console.error('Fullscreen error:', error);
+    }
+  });
+
+  document.addEventListener('fullscreenchange', updateFullscreenIcons);
+}
+
+// Prevent browser UI from scrolling back on touch drag (mobile address bar)
+document.addEventListener('touchmove', (e) => {
+  // Only prevent if we're interacting with the canvas
+  if ((e.target as HTMLElement)?.closest('#game-canvas')) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+// Prevent pull-to-refresh and other browser gestures
+document.addEventListener('touchstart', (e) => {
+  if ((e.target as HTMLElement)?.closest('#game-canvas')) {
+    // Allow single touch for our handlers, but prevent browser gestures
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  }
+}, { passive: false });
 
 document.addEventListener('DOMContentLoaded', init);
