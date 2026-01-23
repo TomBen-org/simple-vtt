@@ -1,5 +1,7 @@
 # Simple VTT
 
+## Disclaimer - this is an experiment in vibe coding, written 100% by claude code
+
 A lightweight Virtual Table Top for tabletop RPG games. No login required, real-time sync across all connected players.
 
 ![Simple VTT Screenshot](docs/assets/screenshot.png)
