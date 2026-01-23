@@ -469,14 +469,10 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     if (drawModeEnabled) {
       const brush = drawingLayer.getBrush();
       if (brush.tool === 'fill') {
-        // Flood fill on click
-        drawingLayer.floodFill(x, y);
-        // Notify chunks affected by fill
-        const activeSceneFill = getActiveScene();
-        if (activeSceneFill) {
-          // For fill, we request a sync since we don't know which chunks were affected
-          // The server will handle saving the chunks
-        }
+        // Flood fill on click (async, fire-and-forget)
+        drawingLayer.floodFill(x, y).catch((err) => {
+          console.error('Flood fill error:', err);
+        });
       } else if (brush.tool === 'picker') {
         // Sample color from the canvas (merged view of background, drawings, tokens)
         const ctx = getContext();

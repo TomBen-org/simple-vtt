@@ -1,5 +1,6 @@
 import { DrawTool, DrawStroke, ChunkKey, CHUNK_SIZE, worldToChunkKey, chunkKeyToWorld, getChunksInRect, generateId } from '../shared/types.js';
 import { ViewState } from './viewState.js';
+import { workerPool } from './floodFillWorkerPool.js';
 
 export interface BrushSettings {
   tool: DrawTool;
@@ -463,19 +464,17 @@ export class DrawingLayer {
     this.currentStroke = null;
   }
 
-  floodFill(worldX: number, worldY: number): void {
+  async floodFill(worldX: number, worldY: number): Promise<void> {
     const fillColor = this.hexToRgba(this.brushSettings.color);
     const startChunkKey = worldToChunkKey(worldX, worldY);
     const [startChunkX, startChunkY] = startChunkKey.split(',').map(Number);
 
     // Get the 9 chunks (3x3 grid centered on clicked chunk)
-    const chunkKeys: ChunkKey[] = [];
     const chunks: Map<ChunkKey, { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; imageData: ImageData }> = new Map();
 
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         const key = `${startChunkX + dx},${startChunkY + dy}` as ChunkKey;
-        chunkKeys.push(key);
         const canvas = this.getOrCreateChunk(key);
         const ctx = canvas.getContext('2d');
         if (ctx) {
@@ -489,7 +488,6 @@ export class DrawingLayer {
     }
 
     // Calculate local coordinates within the multi-chunk grid
-    // The grid is 3x3 chunks, with (0,0) at the top-left of the top-left chunk
     const gridOriginX = (startChunkX - 1) * CHUNK_SIZE;
     const gridOriginY = (startChunkY - 1) * CHUNK_SIZE;
     const gridWidth = CHUNK_SIZE * 3;
@@ -498,99 +496,29 @@ export class DrawingLayer {
     const localX = Math.floor(worldX - gridOriginX);
     const localY = Math.floor(worldY - gridOriginY);
 
-    // Helper to get/set pixels across chunks
-    const getPixelMulti = (x: number, y: number): [number, number, number, number] | null => {
-      if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) return null;
-      const chunkX = startChunkX - 1 + Math.floor(x / CHUNK_SIZE);
-      const chunkY = startChunkY - 1 + Math.floor(y / CHUNK_SIZE);
-      const key = `${chunkX},${chunkY}` as ChunkKey;
+    // Perform flood fill in worker (entire algorithm runs off main thread)
+    const modifiedChunks = await workerPool.floodFill(
+      chunks,
+      localX,
+      localY,
+      fillColor,
+      gridWidth,
+      gridHeight
+    );
+
+    // If no chunks were modified (e.g., clicked on same color), we're done
+    if (modifiedChunks.size === 0) return;
+
+    // Apply modified ImageData back to chunk canvases and notify
+    for (const [key, imageData] of modifiedChunks) {
       const chunk = chunks.get(key);
-      if (!chunk) return null;
-      const lx = x % CHUNK_SIZE;
-      const ly = y % CHUNK_SIZE;
-      return this.getPixel(chunk.imageData, lx, ly);
-    };
-
-    const setPixelMulti = (x: number, y: number, color: [number, number, number, number]): void => {
-      if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) return;
-      const chunkX = startChunkX - 1 + Math.floor(x / CHUNK_SIZE);
-      const chunkY = startChunkY - 1 + Math.floor(y / CHUNK_SIZE);
-      const key = `${chunkX},${chunkY}` as ChunkKey;
-      const chunk = chunks.get(key);
-      if (!chunk) return;
-      const lx = x % CHUNK_SIZE;
-      const ly = y % CHUNK_SIZE;
-      this.setPixel(chunk.imageData, lx, ly, color);
-    };
-
-    // Get target color at click position
-    const targetColor = getPixelMulti(localX, localY);
-    if (!targetColor) return;
-
-    // Don't fill if clicking on the same color
-    if (this.colorsMatch(targetColor, fillColor)) return;
-
-    // Flood fill using a queue-based approach across all 9 chunks
-    const stack: [number, number][] = [[localX, localY]];
-    const visited = new Set<string>();
-    const filledPixels = new Set<string>();
-
-    while (stack.length > 0) {
-      const [x, y] = stack.pop()!;
-      const key = `${x},${y}`;
-
-      if (visited.has(key)) continue;
-      if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) continue;
-
-      const currentColor = getPixelMulti(x, y);
-      if (!currentColor || !this.colorsMatch(currentColor, targetColor)) continue;
-
-      visited.add(key);
-      filledPixels.add(key);
-      setPixelMulti(x, y, fillColor);
-
-      stack.push([x + 1, y]);
-      stack.push([x - 1, y]);
-      stack.push([x, y + 1]);
-      stack.push([x, y - 1]);
-    }
-
-    // Second pass: expand by 3 pixels to cover antialiased edges
-    const EXPAND_PIXELS = 3;
-    const expandedPixels = new Set<string>(filledPixels);
-
-    for (let expansion = 0; expansion < EXPAND_PIXELS; expansion++) {
-      const boundary: [number, number][] = [];
-
-      for (const key of expandedPixels) {
-        const [px, py] = key.split(',').map(Number);
-        const neighbors = [
-          [px + 1, py], [px - 1, py], [px, py + 1], [px, py - 1],
-          [px + 1, py + 1], [px - 1, py - 1], [px + 1, py - 1], [px - 1, py + 1]
-        ];
-        for (const [nx, ny] of neighbors) {
-          const nkey = `${nx},${ny}`;
-          if (!expandedPixels.has(nkey) && nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight) {
-            boundary.push([nx, ny]);
-          }
+      if (chunk) {
+        chunk.ctx.putImageData(imageData, 0, 0);
+        // Encode from canvas and notify (like original code)
+        if (this.onChunkUpdate) {
+          const dataUrl = chunk.canvas.toDataURL('image/png');
+          this.onChunkUpdate(key, dataUrl);
         }
-      }
-
-      for (const [bx, by] of boundary) {
-        const bkey = `${bx},${by}`;
-        if (!expandedPixels.has(bkey)) {
-          expandedPixels.add(bkey);
-          setPixelMulti(bx, by, fillColor);
-        }
-      }
-    }
-
-    // Apply changes back to chunks and notify
-    for (const [key, chunk] of chunks) {
-      chunk.ctx.putImageData(chunk.imageData, 0, 0);
-      if (this.onChunkUpdate) {
-        const data = chunk.canvas.toDataURL('image/png');
-        this.onChunkUpdate(key, data);
       }
     }
   }

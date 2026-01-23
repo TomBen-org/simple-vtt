@@ -189,16 +189,13 @@ class StateManager {
   getDrawingLayer(sceneId: string): DrawingLayer {
     const scene = this.state.scenes.find(s => s.id === sceneId);
 
-    // Load from disk if not in memory
-    if (!scene?.drawing || Object.keys(scene.drawing.chunks).length === 0) {
-      const loaded = loadAllChunks(sceneId);
-      if (scene) {
-        scene.drawing = loaded;
-      }
-      return loaded;
+    // Always load from disk - PNG files are the source of truth
+    // (state.json chunks may be stale after server restart)
+    const loaded = loadAllChunks(sceneId);
+    if (scene) {
+      scene.drawing = loaded;
     }
-
-    return scene.drawing;
+    return loaded;
   }
 
   clearDrawingLayer(sceneId: string): void {
