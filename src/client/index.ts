@@ -1,6 +1,6 @@
 import { GameState, Token, Measurement, Scene, createDefaultGameState, DrawTool, DrawStroke, ChunkKey } from '../shared/types.js';
 import { wsClient } from './websocket.js';
-import { initCanvas, render, loadBackground, getCanvas, getContext, resizeCanvas, clearBackground, DragDropState } from './canvas.js';
+import { initCanvas, render, loadBackground, getCanvas, getContext, resizeCanvas, clearBackground, DragDropState, RemoteTokenDrag } from './canvas.js';
 import { createToolState, setTool, startDrag, updateDrag, endDrag, Tool, ToolState, getCurrentMeasurement } from './tools.js';
 import { findTokenAtPoint, uploadImage, loadTokenImage } from './tokens.js';
 import {
@@ -69,6 +69,13 @@ let highlightedTokenIds: Set<string> = new Set();
 // Throttle measurement updates
 let lastMeasurementUpdate = 0;
 const MEASUREMENT_THROTTLE_MS = 50;
+
+// Remote token drag previews (keyed by playerId)
+const remoteTokenDrags: Map<string, RemoteTokenDrag> = new Map();
+
+// Throttle token drag updates
+let lastTokenDragUpdate = 0;
+const TOKEN_DRAG_THROTTLE_MS = 50;
 
 // Pan tracking
 let isRightMouseDown = false;
@@ -346,6 +353,24 @@ function init(): void {
           drawingLayer.clear();
         }
         break;
+
+      case 'token:drag:update':
+        // Store remote drag preview (ignore our own)
+        if (message.playerId !== playerId) {
+          remoteTokenDrags.set(message.playerId, {
+            tokenId: message.tokenId,
+            x: message.x,
+            y: message.y,
+          });
+        }
+        break;
+
+      case 'token:drag:clear':
+        // Clear remote drag preview (ignore our own)
+        if (message.playerId !== playerId) {
+          remoteTokenDrags.delete(message.playerId);
+        }
+        break;
     }
   });
 
@@ -380,7 +405,7 @@ function init(): void {
       });
     }
 
-    render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds, dragDropState, drawingLayer, drawingOpacity);
+    render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds, dragDropState, drawingLayer, drawingOpacity, remoteTokenDrags);
     requestAnimationFrame(renderLoop);
   }
   renderLoop();
@@ -538,6 +563,11 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     // Track active pointers for multi-touch
     activePointers.set(e.pointerId, { x: screenX, y: screenY });
 
+    // Ignore 3rd+ touch inputs to prevent weird behavior
+    if (activePointers.size > 2) {
+      return;
+    }
+
     // For touch, capture pointer for proper tracking
     if (e.pointerType === 'touch') {
       canvas.setPointerCapture(e.pointerId);
@@ -572,8 +602,40 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const x = world.x;
     const y = world.y;
 
-    // Pan-zoom mode: start panning
+    // Pan-zoom mode: start panning (but check for token first on mobile for long-press)
     if (toolState.currentTool === 'pan-zoom') {
+      // On mobile, check if we're touching a token - allow long-press to drag it
+      if (getIsMobileMode()) {
+        const activeScenePanZoom = getActiveScene();
+        if (activeScenePanZoom) {
+          const token = findTokenAtPoint(x, y, activeScenePanZoom.tokens, activeScenePanZoom.map.gridSize);
+          if (token) {
+            // Don't start panning - wait for long-press to drag token
+            if (longPressTimer !== null) {
+              clearTimeout(longPressTimer);
+            }
+            longPressTriggered = false;
+
+            longPressTimer = window.setTimeout(() => {
+              longPressTriggered = true;
+              longPressTimer = null;
+
+              // Start dragging the token
+              selectedTokenId = token.id;
+              draggedToken = token;
+              dragOffsetX = x - token.x;
+              dragOffsetY = y - token.y;
+              const tokenWidth = token.gridWidth * activeScenePanZoom.map.gridSize;
+              const tokenHeight = token.gridHeight * activeScenePanZoom.map.gridSize;
+              startDrag(toolState, token.x + tokenWidth / 2, token.y + tokenHeight / 2);
+              // Temporarily switch to move tool for the drag
+              setTool(toolState, 'move');
+            }, LONG_PRESS_DURATION);
+            return;
+          }
+        }
+      }
+      // Not on a token (or not mobile) - start panning
       isRightMouseDown = true; // Reuse pan state
       hasPanned = false;
       startPan(viewState, screenX, screenY);
@@ -750,6 +812,13 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
           draggedToken.x = newX;
           draggedToken.y = newY;
           updateDrag(toolState, draggedToken.x + tokenWidth / 2, draggedToken.y + tokenHeight / 2);
+
+          // Send token drag update to other players (throttled)
+          const now = Date.now();
+          if (now - lastTokenDragUpdate >= TOKEN_DRAG_THROTTLE_MS) {
+            lastTokenDragUpdate = now;
+            wsClient.updateTokenDrag(draggedToken.id, playerId, newX, newY);
+          }
         }
       } else if (toolState.currentTool !== 'pan-zoom') {
         updateDrag(toolState, x, y);
@@ -806,7 +875,13 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
 
     if (toolState.currentTool === 'move' && draggedToken) {
       wsClient.moveToken(draggedToken.id, draggedToken.x, draggedToken.y);
+      // Clear the token drag preview for other players
+      wsClient.clearTokenDrag(draggedToken.id, playerId);
       draggedToken = null;
+      // On mobile, switch back to pan-zoom mode after token drag
+      if (getIsMobileMode()) {
+        setTool(toolState, 'pan-zoom');
+      }
     } else if (toolState.currentTool === 'grid-align' && toolState.isDragging) {
       // Grid alignment tool: set grid size and offset based on drawn box
       const width = Math.abs(toolState.endX - toolState.startX);

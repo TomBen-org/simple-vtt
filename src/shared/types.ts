@@ -106,7 +106,9 @@ export type WSMessage =
   | { type: 'draw:sync-request'; sceneId: string }
   | { type: 'draw:sync'; sceneId: string; chunks: Record<ChunkKey, string>; version: number }
   | { type: 'draw:clear'; sceneId: string }
-  | { type: 'token:move-to-scene'; tokenId: string; targetSceneId: string };
+  | { type: 'token:move-to-scene'; tokenId: string; targetSceneId: string }
+  | { type: 'token:drag:update'; tokenId: string; playerId: string; x: number; y: number }
+  | { type: 'token:drag:clear'; tokenId: string; playerId: string };
 
 export const DEFAULT_MAP_SETTINGS: MapSettings = {
   backgroundUrl: null,

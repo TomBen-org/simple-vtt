@@ -188,3 +188,84 @@ export function deleteChunk(sceneId: string, chunkKey: ChunkKey): void {
     }
   }
 }
+
+export interface GarbageCollectResult {
+  deletedUploads: number;
+  deletedDrawingDirs: number;
+}
+
+export function garbageCollect(state: GameState): GarbageCollectResult {
+  const result: GarbageCollectResult = {
+    deletedUploads: 0,
+    deletedDrawingDirs: 0,
+  };
+
+  // Collect all referenced image URLs from all scenes
+  const referencedImages = new Set<string>();
+  const validSceneIds = new Set<string>();
+
+  for (const scene of state.scenes) {
+    validSceneIds.add(scene.id);
+
+    // Add map background URL
+    if (scene.map.backgroundUrl) {
+      // Extract filename from URL (e.g., "uploads/abc.png" -> "abc.png")
+      const filename = scene.map.backgroundUrl.replace(/^uploads\//, '');
+      referencedImages.add(filename);
+    }
+
+    // Add token image URLs
+    for (const token of scene.tokens) {
+      const filename = token.imageUrl.replace(/^uploads\//, '');
+      referencedImages.add(filename);
+    }
+  }
+
+  // Clean up orphaned uploads
+  const uploadsDir = path.join(DATA_DIR, 'uploads');
+  if (fs.existsSync(uploadsDir)) {
+    try {
+      const files = fs.readdirSync(uploadsDir);
+      for (const file of files) {
+        if (!referencedImages.has(file)) {
+          try {
+            fs.unlinkSync(path.join(uploadsDir, file));
+            result.deletedUploads++;
+          } catch (error) {
+            console.error(`Error deleting orphaned upload ${file}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error reading uploads directory:', error);
+    }
+  }
+
+  // Clean up orphaned drawing directories
+  if (fs.existsSync(DRAWINGS_DIR)) {
+    try {
+      const dirs = fs.readdirSync(DRAWINGS_DIR);
+      for (const dir of dirs) {
+        if (!validSceneIds.has(dir)) {
+          const dirPath = path.join(DRAWINGS_DIR, dir);
+          try {
+            // Delete all files in the directory
+            const files = fs.readdirSync(dirPath);
+            for (const file of files) {
+              fs.unlinkSync(path.join(dirPath, file));
+            }
+            // Delete the directory itself
+            fs.rmdirSync(dirPath);
+            result.deletedDrawingDirs++;
+          } catch (error) {
+            console.error(`Error deleting orphaned drawing directory ${dir}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error reading drawings directory:', error);
+    }
+  }
+
+  return result;
+}

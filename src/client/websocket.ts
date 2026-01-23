@@ -180,6 +180,14 @@ class WebSocketClient {
   moveTokenToScene(tokenId: string, targetSceneId: string): void {
     this.send({ type: 'token:move-to-scene', tokenId, targetSceneId });
   }
+
+  updateTokenDrag(tokenId: string, playerId: string, x: number, y: number): void {
+    this.send({ type: 'token:drag:update', tokenId, playerId, x, y });
+  }
+
+  clearTokenDrag(tokenId: string, playerId: string): void {
+    this.send({ type: 'token:drag:clear', tokenId, playerId });
+  }
 }
 
 export const wsClient = new WebSocketClient();

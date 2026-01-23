@@ -462,13 +462,26 @@ body.mobile-mode .context-menu {
     left: 0;
     top: 0;
     bottom: 0;
-    width: 70px;
+    width: min(70px, 12vh);
     height: auto;
     flex-direction: column;
     border-bottom: none;
     border-right: 1px solid #333;
-    padding: 10px;
+    padding: min(10px, 1.5vh);
+    gap: min(8px, 1vh);
     z-index: 100;
+    overflow-y: auto;
+  }
+
+  body.mobile-mode #mobile-toolbar .mobile-tool-btn {
+    width: min(50px, 9vh);
+    height: min(50px, 9vh);
+    flex-shrink: 0;
+  }
+
+  body.mobile-mode #mobile-toolbar .mobile-tool-btn svg {
+    width: min(28px, 5vh);
+    height: min(28px, 5vh);
   }
 }
 

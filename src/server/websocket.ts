@@ -141,6 +141,16 @@ function handleMessage(message: WSMessage, sender: WebSocket): void {
         broadcast(message);
       }
       break;
+
+    case 'token:drag:update':
+      // Broadcast drag preview to all other clients
+      broadcastExcept(message, sender);
+      break;
+
+    case 'token:drag:clear':
+      // Broadcast drag clear to all other clients
+      broadcastExcept(message, sender);
+      break;
   }
 }
 

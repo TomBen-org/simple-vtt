@@ -13,6 +13,13 @@ export interface DragDropState {
   fileCount: number;
 }
 
+// Remote token drag preview
+export interface RemoteTokenDrag {
+  tokenId: string;
+  x: number;
+  y: number;
+}
+
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 let backgroundMipmaps: HTMLCanvasElement[] | null = null;
@@ -33,8 +40,9 @@ export function resizeCanvas(): void {
   const isLandscape = window.matchMedia('(orientation: landscape)').matches;
 
   if (isMobile && isLandscape) {
-    // Landscape mobile: toolbar on left side (70px)
-    canvas.width = window.innerWidth - 70;
+    // Landscape mobile: toolbar on left side - use min(70px, 12vh) to match CSS
+    const toolbarWidth = Math.min(70, window.innerHeight * 0.12);
+    canvas.width = window.innerWidth - toolbarWidth;
     canvas.height = window.innerHeight;
   } else if (isMobile) {
     // Portrait mobile: toolbar on top (70px)
@@ -80,7 +88,8 @@ export function render(
   highlightedTokenIds: Set<string> = new Set(),
   dragDropState: DragDropState | null = null,
   drawingLayer: DrawingLayer | null = null,
-  drawingOpacity: number = 1
+  drawingOpacity: number = 1,
+  remoteTokenDrags: Map<string, RemoteTokenDrag> = new Map()
 ): void {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -119,6 +128,14 @@ export function render(
 
   tokens.forEach(token => {
     drawToken(token, token.id === selectedTokenId, highlightedTokenIds.has(token.id), map.gridSize, viewState);
+  });
+
+  // Draw remote token drag previews (ghost tokens)
+  remoteTokenDrags.forEach((drag) => {
+    const token = tokens.find(t => t.id === drag.tokenId);
+    if (token) {
+      drawGhostToken(token, drag.x, drag.y, map.gridSize, viewState);
+    }
   });
 
   // Draw local measurement
@@ -218,6 +235,39 @@ function drawToken(token: Token, selected: boolean, highlighted: boolean, gridSi
   }
 }
 
+function drawGhostToken(token: Token, x: number, y: number, gridSize: number, viewState: ViewState): void {
+  // Calculate pixel dimensions from grid units
+  const width = token.gridWidth * gridSize;
+  const height = token.gridHeight * gridSize;
+
+  // Calculate target pixel size accounting for zoom
+  const pixelWidth = width * viewState.zoom;
+  const pixelHeight = height * viewState.zoom;
+
+  // Get the appropriate mipmap for this zoom level
+  const mipmap = getTokenMipmap(token.imageUrl, pixelWidth, pixelHeight);
+
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+
+  if (mipmap) {
+    ctx.drawImage(mipmap, x, y, width, height);
+  } else {
+    ctx.fillStyle = '#666';
+    ctx.fillRect(x, y, width, height);
+  }
+
+  // Draw purple dashed border
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = '#a855f7';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8, 4]);
+  ctx.strokeRect(x - 2, y - 2, width + 4, height + 4);
+  ctx.setLineDash([]);
+
+  ctx.restore();
+}
+
 function drawMeasurement(map: MapSettings, toolState: ToolState, viewState: ViewState): void {
   const measurement = getCurrentMeasurement(toolState);
   if (!measurement) return;
@@ -244,7 +294,10 @@ function drawMeasurement(map: MapSettings, toolState: ToolState, viewState: View
 
     const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
     const feet = (distance / gridSize) * feetPerCell;
-    drawDistanceLabel(endX, endY - 10 / zoom, feet, undefined, zoom);
+    // Position label at midpoint of line
+    const midX = (startX + endX) / 2;
+    const midY = (startY + endY) / 2;
+    drawDistanceLabel(midX, midY, feet, undefined, zoom);
   } else if (tool === 'circle') {
     const radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
     ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)';
@@ -256,6 +309,7 @@ function drawMeasurement(map: MapSettings, toolState: ToolState, viewState: View
     ctx.stroke();
 
     const feet = (radius / gridSize) * feetPerCell;
+    // Label at center of circle
     drawDistanceLabel(startX, startY, feet, 'radius', zoom);
   } else if (tool === 'cone') {
     const dx = endX - startX;
@@ -276,7 +330,10 @@ function drawMeasurement(map: MapSettings, toolState: ToolState, viewState: View
     ctx.stroke();
 
     const feet = (length / gridSize) * feetPerCell;
-    drawDistanceLabel(endX, endY, feet, 'length', zoom);
+    // Position label at centroid of cone (1/3 from origin along center line, then adjust for visual center)
+    const coneCenterX = startX + dx * 0.5;
+    const coneCenterY = startY + dy * 0.5;
+    drawDistanceLabel(coneCenterX, coneCenterY, feet, 'length', zoom);
   } else if (tool === 'grid-align') {
     // Draw grid alignment preview box
     const minX = Math.min(startX, endX);
@@ -309,14 +366,21 @@ function drawMeasurement(map: MapSettings, toolState: ToolState, viewState: View
 }
 
 function drawDistanceLabel(x: number, y: number, feet: number, label: string | undefined, zoom: number): void {
+  // Reset line dash to solid for text stroke (may be dashed from measurement line)
+  ctx.setLineDash([]);
   const text = label ? `${feet.toFixed(1)} ft ${label}` : `${feet.toFixed(1)} ft`;
   const fontSize = 14 / zoom;
   ctx.font = `bold ${fontSize}px Arial`;
   ctx.fillStyle = 'white';
   ctx.strokeStyle = 'black';
   ctx.lineWidth = 3 / zoom;
-  ctx.strokeText(text, x + 5 / zoom, y);
-  ctx.fillText(text, x + 5 / zoom, y);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.strokeText(text, x, y);
+  ctx.fillText(text, x, y);
+  // Reset to default alignment
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
 }
 
 function drawRemoteMeasurement(map: MapSettings, measurement: Measurement, viewState: ViewState): void {
@@ -343,7 +407,10 @@ function drawRemoteMeasurement(map: MapSettings, measurement: Measurement, viewS
 
     const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
     const feet = (distance / gridSize) * feetPerCell;
-    drawRemoteDistanceLabel(endX, endY - 10 / zoom, feet, undefined, zoom);
+    // Position label at midpoint of line
+    const midX = (startX + endX) / 2;
+    const midY = (startY + endY) / 2;
+    drawRemoteDistanceLabel(midX, midY, feet, undefined, zoom);
   } else if (tool === 'circle') {
     const radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
     // Purple for remote circle measurements
@@ -356,6 +423,7 @@ function drawRemoteMeasurement(map: MapSettings, measurement: Measurement, viewS
     ctx.stroke();
 
     const feet = (radius / gridSize) * feetPerCell;
+    // Label at center of circle
     drawRemoteDistanceLabel(startX, startY, feet, 'radius', zoom);
   } else if (tool === 'cone') {
     const dx = endX - startX;
@@ -377,21 +445,31 @@ function drawRemoteMeasurement(map: MapSettings, measurement: Measurement, viewS
     ctx.stroke();
 
     const feet = (length / gridSize) * feetPerCell;
-    drawRemoteDistanceLabel(endX, endY, feet, 'length', zoom);
+    // Position label at center of cone
+    const coneCenterX = startX + dx * 0.5;
+    const coneCenterY = startY + dy * 0.5;
+    drawRemoteDistanceLabel(coneCenterX, coneCenterY, feet, 'length', zoom);
   }
 
   ctx.restore();
 }
 
 function drawRemoteDistanceLabel(x: number, y: number, feet: number, label: string | undefined, zoom: number): void {
+  // Reset line dash to solid for text stroke (may be dashed from measurement line)
+  ctx.setLineDash([]);
   const text = label ? `${feet.toFixed(1)} ft ${label}` : `${feet.toFixed(1)} ft`;
   const fontSize = 14 / zoom;
   ctx.font = `bold ${fontSize}px Arial`;
   ctx.fillStyle = '#a855f7';
   ctx.strokeStyle = 'black';
   ctx.lineWidth = 3 / zoom;
-  ctx.strokeText(text, x + 5 / zoom, y);
-  ctx.fillText(text, x + 5 / zoom, y);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.strokeText(text, x, y);
+  ctx.fillText(text, x, y);
+  // Reset to default alignment
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
 }
 
 function drawDragDropPreview(dragDropState: DragDropState, gridSize: number): void {

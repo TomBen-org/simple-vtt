@@ -30,7 +30,9 @@ Open http://localhost:3000 in your browser.
 - **Multiple Scenes**: Support for multiple scenes, each with its own map, tokens, and grid settings. All clients view the same active scene (shared view).
 - **Drag-and-Drop Tokens**: Drag image files (PNG, JPEG, GIF, WebP) onto the canvas to create tokens at the drop position. Multiple files are arranged in a grid pattern.
 - **Drawing Layer**: Paint/draw on a layer above the map but below tokens. Includes brush, eraser, shapes (line, rect, ellipse), and fill bucket tools. Drawings sync in real-time and persist per-scene.
-- **Touch Support**: Mobile-friendly interface with automatic detection. Touch devices get a simplified 5-button toolbar (Pan/Zoom, Move, Line, Circle, Cone) with pinch-to-zoom and one-finger pan.
+- **Touch Support**: Mobile-friendly interface with automatic detection. Touch devices get a simplified 5-button toolbar (Pan/Zoom, Line, Circle, Cone, Fullscreen) with pinch-to-zoom, one-finger pan, and long-press to drag tokens.
+- **Synchronized Token Dragging**: When dragging tokens, a ghost preview syncs in real-time to other connected players (purple dashed border, 50% opacity).
+- **Garbage Collection**: Server automatically cleans up orphaned uploads and drawing directories on startup.
 
 ## Tech Stack
 
@@ -93,9 +95,9 @@ Toggle Draw Mode button to reveal drawing tools. When enabled, mouse events draw
 The app automatically detects touch input and switches to a mobile-optimized UI:
 
 - **Automatic detection**: Uses `(pointer: coarse)` media query on load, then dynamically switches based on actual input type (touch vs mouse)
-- **Mobile toolbar**: 6 large (50px) buttons with SVG icons: Pan/Zoom, Move, Line, Circle, Cone, Fullscreen
-- **Pan/Zoom mode**: One-finger drag to pan, pinch with two fingers to zoom (pinch only works in pan-zoom mode)
-- **Move mode**: Long-press on a token to start dragging it; touching the background does nothing
+- **Mobile toolbar**: 5 large (50px) buttons with SVG icons: Pan/Zoom, Line, Circle, Cone, Fullscreen
+- **Pan/Zoom mode**: One-finger drag to pan, pinch with two fingers to zoom. Long-press on a token to start dragging it.
+- **Token dragging**: In pan-zoom mode, long-press on a token to drag it. Returns to pan-zoom mode when released.
 - **Measurement tools**: Touch and drag to measure with line, circle, or cone
 - **Fullscreen button**: Toggle fullscreen mode for immersive play
 - **Landscape layout**: In landscape orientation, toolbar moves to left side vertically
@@ -113,12 +115,10 @@ The app automatically detects touch input and switches to a mobile-optimized UI:
 
 To enable GitHub Pages: repo Settings → Pages → Deploy from branch → main, /docs folder.
 
-## TODO
-- garbage collect unused images / map files / drawing tiles when possible
-- when dragging a token to move it, show a preview of that to other users like we do with the line/cone/circle tools
-- fix issue in the distance text when previewing a token move / line measure tool, the outline on the "x ft" text appears to be dashed like the line instead of solid like it is in the cone and circle tools
-- in fullscreen mode on mobile with landscape orientation, the buttons often are off screen. Maybe we use vh units for icon size in that configuration.
-- the numbers when using measuring tools are right under my finger. On both desktop and mobile, put these numbers in the middle of the template (middle of circle, middle of cone, middle of line)
+## TODOS
+- the move token preview sync should look the same for the client as it does for the user (the faded token is nice, but its missing the line and length)
+- BUG: in pan/zoom mode on mobile, long pressing a token should move it but currently it only selects it
+- the solution we use for ignoring touch event 3 and up doesnt work. I think we need to ignore new touch events once two events are active.
 
 ## Extra instructions for Claude
 - If necessary, update this file after implementing each feature, or having a discussion about features.
