@@ -102,6 +102,13 @@ To enable GitHub Pages: repo Settings → Pages → Deploy from branch → main,
 - when dragging a token to move it, show a preview of that to other users like we do with the line/cone/circle tools
 - fix issue in the distance text when previewing a token move / line measure tool, the outline on the "x ft" text appears to be dashed like the line instead of solid like it is in the cone and circle tools
 
+### Bigger feature: Touch support
+- on mobile we need different ux with touch support:
+- disable the regular pan zoom with right mouse button
+- pan/zoom tool (only available on mobile) where touch moves the viewpoint with pinch to zoom, touch and drag background to move
+- touch and drag a token to move a token/use a tool only when that tool is selected
+- hide everything on the toolbar except the tools. Mobile users cannot upload tokens or change maps
+
 ## Extra instructions for Claude
 - If necessary, update this file after implementing each feature, or having a discussion about features.
 - Always ask questions in planning mode before building your implementation strategy
