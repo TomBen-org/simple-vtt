@@ -65,7 +65,8 @@ export function render(
   remoteMeasurements: Map<string, Measurement> = new Map(),
   highlightedTokenIds: Set<string> = new Set(),
   dragDropState: DragDropState | null = null,
-  drawingLayer: DrawingLayer | null = null
+  drawingLayer: DrawingLayer | null = null,
+  drawingOpacity: number = 1
 ): void {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -95,7 +96,7 @@ export function render(
 
   // Render drawing layer (above background, below grid)
   if (drawingLayer) {
-    drawingLayer.render(ctx, viewState);
+    drawingLayer.render(ctx, viewState, drawingOpacity);
   }
 
   if (map.gridEnabled) {

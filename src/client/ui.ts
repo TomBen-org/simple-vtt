@@ -15,6 +15,7 @@ type DrawToolChangeHandler = (tool: DrawTool) => void;
 type DrawColorChangeHandler = (color: string) => void;
 type DrawBrushSizeChangeHandler = (size: number) => void;
 type DrawClearHandler = () => void;
+type DrawingOpacityChangeHandler = (opacity: number) => void;
 
 let onToolChange: ToolChangeHandler | null = null;
 let onMapUpload: MapUploadHandler | null = null;
@@ -30,6 +31,7 @@ let onDrawToolChange: DrawToolChangeHandler | null = null;
 let onDrawColorChange: DrawColorChangeHandler | null = null;
 let onDrawBrushSizeChange: DrawBrushSizeChangeHandler | null = null;
 let onDrawClear: DrawClearHandler | null = null;
+let onDrawingOpacityChange: DrawingOpacityChangeHandler | null = null;
 
 export function initUI(): void {
   document.querySelectorAll('.tool-btn').forEach(btn => {
@@ -265,6 +267,19 @@ export function initUI(): void {
       }
     });
   }
+
+  // Drawing opacity slider
+  const drawingOpacityInput = document.getElementById('drawing-opacity') as HTMLInputElement;
+  const drawingOpacityValue = document.getElementById('drawing-opacity-value');
+  if (drawingOpacityInput && drawingOpacityValue) {
+    drawingOpacityInput.addEventListener('input', () => {
+      const value = parseInt(drawingOpacityInput.value, 10);
+      drawingOpacityValue.textContent = value + '%';
+      if (onDrawingOpacityChange) {
+        onDrawingOpacityChange(value / 100);
+      }
+    });
+  }
 }
 
 export function setActiveTool(tool: Tool): void {
@@ -395,4 +410,8 @@ export function setDrawColor(color: string): void {
   if (drawColorInput) {
     drawColorInput.value = color;
   }
+}
+
+export function setOnDrawingOpacityChange(handler: DrawingOpacityChangeHandler): void {
+  onDrawingOpacityChange = handler;
 }

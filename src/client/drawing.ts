@@ -558,7 +558,7 @@ export class DrawingLayer {
     return [255, 0, 0, 255]; // Default to red
   }
 
-  render(ctx: CanvasRenderingContext2D, viewState: ViewState): void {
+  render(ctx: CanvasRenderingContext2D, viewState: ViewState, opacity: number = 1): void {
     // Calculate visible bounds in world coordinates
     const canvas = ctx.canvas;
     const worldLeft = -viewState.panX / viewState.zoom;
@@ -568,6 +568,10 @@ export class DrawingLayer {
 
     // Get visible chunks
     const visibleChunks = getChunksInRect(worldLeft, worldTop, worldRight, worldBottom);
+
+    // Draw chunks and scratch canvas with opacity
+    ctx.save();
+    ctx.globalAlpha = opacity;
 
     // Draw visible chunks
     for (const chunkKey of visibleChunks) {
@@ -583,7 +587,9 @@ export class DrawingLayer {
       ctx.drawImage(this.scratchCanvas, this.scratchOriginX, this.scratchOriginY);
     }
 
-    // Draw cursor preview circle for brush/eraser
+    ctx.restore();
+
+    // Draw cursor preview circle for brush/eraser (at full opacity, outside save/restore)
     if (this.showCursor && (this.brushSettings.tool === 'brush' || this.brushSettings.tool === 'eraser')) {
       ctx.save();
       ctx.strokeStyle = this.brushSettings.tool === 'eraser' ? '#ffffff' : this.brushSettings.color;

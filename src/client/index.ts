@@ -24,6 +24,7 @@ import {
   setOnDrawClear,
   setDrawModeEnabled,
   setDrawColor,
+  setOnDrawingOpacityChange,
 } from './ui.js';
 import { createViewState, ViewState, screenToWorld, startPan, updatePan, endPan, applyZoom } from './viewState.js';
 import { getTokensInMeasurement } from './geometry.js';
@@ -87,6 +88,9 @@ let dragDropState: DragDropState | null = null;
 const drawingLayer = new DrawingLayer();
 let drawModeEnabled = false;
 let isDrawing = false;
+
+// Client-side drawing opacity (not synced)
+let drawingOpacity = 1.0;
 
 // Valid image types for drag-and-drop
 const VALID_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
@@ -338,7 +342,7 @@ function init(): void {
       });
     }
 
-    render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds, dragDropState, drawingLayer);
+    render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds, dragDropState, drawingLayer, drawingOpacity);
     requestAnimationFrame(renderLoop);
   }
   renderLoop();
@@ -440,6 +444,10 @@ function setupEventHandlers(): void {
     if (activeScene) {
       wsClient.clearDrawing(activeScene.id);
     }
+  });
+
+  setOnDrawingOpacityChange((opacity: number) => {
+    drawingOpacity = opacity;
   });
 }
 

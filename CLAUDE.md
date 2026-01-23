@@ -98,8 +98,15 @@ Toggle Draw Mode button to reveal drawing tools. When enabled, mouse events draw
 To enable GitHub Pages: repo Settings → Pages → Deploy from branch → main, /docs folder.
 
 ## Planned features
-- garbage collect unused images
-- moving tokens between scenes
+- In the drawing settings, add a client side (NOT synced) option to render the drawing layer at 50% opacity
+- unify the way we handle complex subtools: both the drawing tools and the grid setting tools (apart from show & snap) should be hidden by default, and hide / expand with the same type of UX
+- I should be able to choose transparency as a colour somehow, so I can eg use the rect tool to erase
+- garbage collect unused images / map files / drawing tiles when possible
+- moving tokens between scenes via right click menu
+- duplicate tokens via right click menu
+- when dragging a token to move it, show a preview of that to other users like we do with the line/cone/circle tools
+- draw the grid on top of the drawings layer
+- fix the issue where I can see hairline gaps between the drawing layer chunks when I zoom out
 
 ## Extra instructions for Claude
 - If necessary, update this file after implementing each feature, or having a discussion about features.
