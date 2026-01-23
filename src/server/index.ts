@@ -34,6 +34,10 @@ const wss = new WebSocketServer({ server });
 
 setupWebSocket(wss);
 
+wss.on('listening', () => {
+  console.log('WebSocket server ready');
+});
+
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

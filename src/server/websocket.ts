@@ -7,8 +7,12 @@ let wss: WebSocketServer;
 export function setupWebSocket(server: WebSocketServer): void {
   wss = server;
 
-  wss.on('connection', (ws: WebSocket) => {
-    console.log('Client connected');
+  wss.on('error', (error) => {
+    console.error('WebSocket server error:', error);
+  });
+
+  wss.on('connection', (ws: WebSocket, req) => {
+    console.log('Client connected from', req.socket.remoteAddress);
 
     const syncMessage: WSMessage = {
       type: 'sync',

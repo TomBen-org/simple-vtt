@@ -6,19 +6,50 @@ class WebSocketClient {
   private ws: WebSocket | null = null;
   private handlers: MessageHandler[] = [];
   private reconnectTimeout: number | null = null;
+  private isConnecting: boolean = false;
 
   connect(): void {
+    // Don't start a new connection if one is already in progress
+    if (this.isConnecting) {
+      return;
+    }
+
+    // Clean up existing connection if any
+    if (this.ws) {
+      this.ws.onopen = null;
+      this.ws.onclose = null;
+      this.ws.onerror = null;
+      this.ws.onmessage = null;
+      if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
+        this.ws.close();
+      }
+      this.ws = null;
+    }
+
+    // Clear any pending reconnect
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}`;
 
-    this.ws = new WebSocket(wsUrl);
+    console.log('WebSocket connecting to', wsUrl);
+    this.isConnecting = true;
+
+    try {
+      this.ws = new WebSocket(wsUrl);
+    } catch (error) {
+      console.error('WebSocket creation failed:', error);
+      this.isConnecting = false;
+      this.scheduleReconnect();
+      return;
+    }
 
     this.ws.onopen = () => {
       console.log('WebSocket connected');
-      if (this.reconnectTimeout) {
-        clearTimeout(this.reconnectTimeout);
-        this.reconnectTimeout = null;
-      }
+      this.isConnecting = false;
     };
 
     this.ws.onmessage = (event) => {
@@ -30,14 +61,29 @@ class WebSocketClient {
       }
     };
 
-    this.ws.onclose = () => {
-      console.log('WebSocket disconnected, reconnecting...');
-      this.reconnectTimeout = window.setTimeout(() => this.connect(), 2000);
+    this.ws.onclose = (event) => {
+      console.log('WebSocket disconnected (code:', event.code, 'reason:', event.reason || 'none', ')');
+      this.isConnecting = false;
+      this.scheduleReconnect();
     };
 
     this.ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      // Note: error event doesn't contain useful info in browsers for security reasons
+      console.error('WebSocket error occurred');
+      this.isConnecting = false;
+      // Don't schedule reconnect here - onclose will fire after onerror
     };
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectTimeout) {
+      return; // Already scheduled
+    }
+    console.log('Scheduling reconnect in 1 second...');
+    this.reconnectTimeout = window.setTimeout(() => {
+      this.reconnectTimeout = null;
+      this.connect();
+    }, 1000);
   }
 
   onMessage(handler: MessageHandler): void {
