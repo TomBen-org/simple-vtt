@@ -573,12 +573,13 @@ export class DrawingLayer {
     ctx.save();
     ctx.globalAlpha = opacity;
 
-    // Draw visible chunks
+    // Draw visible chunks with slight overlap to prevent hairline gaps when zoomed out
+    const overlap = 1 / viewState.zoom; // 1 pixel in screen space
     for (const chunkKey of visibleChunks) {
       const chunk = this.chunks.get(chunkKey);
       if (chunk) {
         const chunkWorld = chunkKeyToWorld(chunkKey);
-        ctx.drawImage(chunk, chunkWorld.x, chunkWorld.y);
+        ctx.drawImage(chunk, chunkWorld.x, chunkWorld.y, CHUNK_SIZE + overlap, CHUNK_SIZE + overlap);
       }
     }
 
