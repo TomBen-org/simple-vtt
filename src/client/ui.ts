@@ -209,15 +209,24 @@ export function initUI(): void {
     });
   }
 
-  // Draw mode toggle
-  const drawModeToggle = document.getElementById('draw-mode-toggle');
+  // Draw section collapse toggle - also controls draw mode
+  const drawCollapseBtn = document.getElementById('draw-collapse-btn');
   const drawTools = document.getElementById('draw-tools');
-  if (drawModeToggle && drawTools) {
-    drawModeToggle.addEventListener('click', () => {
-      const isActive = drawModeToggle.classList.toggle('active');
-      drawTools.classList.toggle('hidden', !isActive);
+  if (drawCollapseBtn && drawTools) {
+    drawCollapseBtn.addEventListener('click', () => {
+      const isCollapsed = drawTools.classList.toggle('collapsed');
+      drawCollapseBtn.textContent = isCollapsed ? '▶' : '▼';
+      const isDrawMode = !isCollapsed;
+
+      // Deselect other tools when entering draw mode
+      if (isDrawMode) {
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+          btn.classList.remove('active');
+        });
+      }
+
       if (onDrawModeChange) {
-        onDrawModeChange(isActive);
+        onDrawModeChange(isDrawMode);
       }
     });
   }
@@ -289,6 +298,17 @@ export function setActiveTool(tool: Tool): void {
       btn.classList.add('active');
     }
   });
+
+  // Close draw tools when selecting a regular tool
+  const drawCollapseBtn = document.getElementById('draw-collapse-btn');
+  const drawTools = document.getElementById('draw-tools');
+  if (drawCollapseBtn && drawTools && !drawTools.classList.contains('collapsed')) {
+    drawTools.classList.add('collapsed');
+    drawCollapseBtn.textContent = '▶';
+    if (onDrawModeChange) {
+      onDrawModeChange(false);
+    }
+  }
 }
 
 export function setActiveDrawTool(tool: DrawTool): void {
@@ -301,13 +321,17 @@ export function setActiveDrawTool(tool: DrawTool): void {
 }
 
 export function setDrawModeEnabled(enabled: boolean): void {
-  const drawModeToggle = document.getElementById('draw-mode-toggle');
+  const drawCollapseBtn = document.getElementById('draw-collapse-btn');
   const drawTools = document.getElementById('draw-tools');
-  if (drawModeToggle) {
-    drawModeToggle.classList.toggle('active', enabled);
+  if (drawCollapseBtn && drawTools) {
+    drawTools.classList.toggle('collapsed', !enabled);
+    drawCollapseBtn.textContent = enabled ? '▼' : '▶';
   }
-  if (drawTools) {
-    drawTools.classList.toggle('hidden', !enabled);
+  if (enabled) {
+    // Deselect other tools when entering draw mode
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
   }
 }
 

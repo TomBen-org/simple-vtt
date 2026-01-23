@@ -254,22 +254,13 @@ label {
   gap: 8px;
 }
 
-#draw-mode-toggle {
-  padding: 6px 12px;
-}
-
-#draw-mode-toggle.active {
-  background: #4a4a6e;
-  border-color: #6a6a8e;
-}
-
 #draw-tools {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-#draw-tools.hidden {
+#draw-tools.collapsed {
   display: none;
 }
 

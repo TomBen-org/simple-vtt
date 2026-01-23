@@ -88,6 +88,7 @@ let dragDropState: DragDropState | null = null;
 const drawingLayer = new DrawingLayer();
 let drawModeEnabled = false;
 let isDrawing = false;
+let lastToolBeforeDrawMode: Tool = 'move';
 
 // Client-side drawing opacity (not synced)
 let drawingOpacity = 1.0;
@@ -352,6 +353,11 @@ function setupEventHandlers(): void {
   setOnToolChange((tool: Tool) => {
     setTool(toolState, tool);
     selectedTokenId = null;
+    // Track the last tool used (for restoring after draw mode)
+    lastToolBeforeDrawMode = tool;
+    // Exit draw mode when selecting a regular tool
+    drawModeEnabled = false;
+    drawingLayer.updateCursor(0, 0, false);
   });
 
   setOnMapUpload(async (file: File) => {
@@ -419,9 +425,9 @@ function setupEventHandlers(): void {
   setOnDrawModeChange((enabled: boolean) => {
     drawModeEnabled = enabled;
     if (!enabled) {
-      // Reset to move tool when exiting draw mode
-      setTool(toolState, 'move');
-      setActiveTool('move');
+      // Restore last tool when exiting draw mode
+      setTool(toolState, lastToolBeforeDrawMode);
+      setActiveTool(lastToolBeforeDrawMode);
       // Hide cursor preview
       drawingLayer.updateCursor(0, 0, false);
     }

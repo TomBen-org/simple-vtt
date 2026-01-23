@@ -37,13 +37,13 @@
     </div>
 
     <div class="toolbar-section collapsible">
-      <button class="collapse-btn" id="grid-collapse-btn" title="Toggle grid settings">▼</button>
+      <button class="collapse-btn" id="grid-collapse-btn" title="Toggle grid settings">▶</button>
       <span class="section-label">Grid</span>
       <label>
         <input type="checkbox" id="grid-toggle" checked>
         Show
       </label>
-      <div class="collapsible-content" id="grid-settings">
+      <div class="collapsible-content collapsed" id="grid-settings">
         <label class="grid-control">
           Size:
           <button class="grid-btn" id="grid-size-dec">−</button>
@@ -66,10 +66,10 @@
       </div>
     </div>
 
-    <div class="toolbar-section" id="draw-section">
+    <div class="toolbar-section collapsible" id="draw-section">
+      <button class="collapse-btn" id="draw-collapse-btn" title="Toggle draw tools">▶</button>
       <span class="section-label">Draw</span>
-      <button id="draw-mode-toggle" title="Toggle Draw Mode">Draw Mode</button>
-      <div id="draw-tools" class="hidden">
+      <div class="collapsible-content collapsed" id="draw-tools">
         <button class="draw-tool-btn active" data-draw-tool="brush" title="Brush">Brush</button>
         <button class="draw-tool-btn" data-draw-tool="eraser" title="Eraser">Eraser</button>
         <button class="draw-tool-btn" data-draw-tool="line" title="Line">Line</button>
