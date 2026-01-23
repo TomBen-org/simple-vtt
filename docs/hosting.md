@@ -3,6 +3,11 @@ layout: default
 title: Hosting Guide
 ---
 
+<p align="center" style="margin-bottom: 2em;">
+  <a href="./" style="display: inline-block; padding: 0.75em 1.5em; margin: 0.25em; background-color: #159957; color: white; text-decoration: none; border-radius: 0.5em; font-weight: bold;">Home</a>
+  <a href="user-guide" style="display: inline-block; padding: 0.75em 1.5em; margin: 0.25em; background-color: #159957; color: white; text-decoration: none; border-radius: 0.5em; font-weight: bold;">User Guide</a>
+</p>
+
 # Hosting Guide
 
 This guide covers how to run your own Simple VTT server.

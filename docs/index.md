@@ -3,6 +3,11 @@ layout: default
 title: Home
 ---
 
+<p align="center" style="margin-bottom: 2em;">
+  <a href="user-guide" style="display: inline-block; padding: 0.75em 1.5em; margin: 0.25em; background-color: #159957; color: white; text-decoration: none; border-radius: 0.5em; font-weight: bold;">User Guide</a>
+  <a href="hosting" style="display: inline-block; padding: 0.75em 1.5em; margin: 0.25em; background-color: #159957; color: white; text-decoration: none; border-radius: 0.5em; font-weight: bold;">Hosting Guide</a>
+</p>
+
 # Simple VTT Documentation
 
 Simple VTT is a lightweight Virtual Table Top application for tabletop RPG games. It runs in your browser and syncs in real-time across all connected players.

@@ -3,6 +3,11 @@ layout: default
 title: User Guide
 ---
 
+<p align="center" style="margin-bottom: 2em;">
+  <a href="./" style="display: inline-block; padding: 0.75em 1.5em; margin: 0.25em; background-color: #159957; color: white; text-decoration: none; border-radius: 0.5em; font-weight: bold;">Home</a>
+  <a href="hosting" style="display: inline-block; padding: 0.75em 1.5em; margin: 0.25em; background-color: #159957; color: white; text-decoration: none; border-radius: 0.5em; font-weight: bold;">Hosting Guide</a>
+</p>
+
 # User Guide
 
 This guide covers everything you need to know to use Simple VTT as a player or game master.
