@@ -116,9 +116,7 @@ The app automatically detects touch input and switches to a mobile-optimized UI:
 To enable GitHub Pages: repo Settings → Pages → Deploy from branch → main, /docs folder.
 
 ## TODOS
-- the move token preview sync should look the same for the client as it does for the user (the faded token is nice, but its missing the line and length)
-- BUG: in pan/zoom mode on mobile, long pressing a token should move it but currently it only selects it
-- the solution we use for ignoring touch event 3 and up doesnt work. I think we need to ignore new touch events once two events are active.
+(none)
 
 ## Extra instructions for Claude
 - If necessary, update this file after implementing each feature, or having a discussion about features.

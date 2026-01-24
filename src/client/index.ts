@@ -361,6 +361,8 @@ function init(): void {
             tokenId: message.tokenId,
             x: message.x,
             y: message.y,
+            startX: message.startX,
+            startY: message.startY,
           });
         }
         break;
@@ -560,13 +562,13 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
 
-    // Track active pointers for multi-touch
-    activePointers.set(e.pointerId, { x: screenX, y: screenY });
-
-    // Ignore 3rd+ touch inputs to prevent weird behavior
-    if (activePointers.size > 2) {
+    // Ignore 3rd+ touch inputs - don't even add them to tracking
+    if (activePointers.size >= 2) {
       return;
     }
+
+    // Track active pointers for multi-touch
+    activePointers.set(e.pointerId, { x: screenX, y: screenY });
 
     // For touch, capture pointer for proper tracking
     if (e.pointerType === 'touch') {
@@ -627,9 +629,9 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
               dragOffsetY = y - token.y;
               const tokenWidth = token.gridWidth * activeScenePanZoom.map.gridSize;
               const tokenHeight = token.gridHeight * activeScenePanZoom.map.gridSize;
-              startDrag(toolState, token.x + tokenWidth / 2, token.y + tokenHeight / 2);
-              // Temporarily switch to move tool for the drag
+              // Switch to move tool first, then start drag (setTool resets isDragging)
               setTool(toolState, 'move');
+              startDrag(toolState, token.x + tokenWidth / 2, token.y + tokenHeight / 2);
             }, LONG_PRESS_DURATION);
             return;
           }
@@ -817,7 +819,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
           const now = Date.now();
           if (now - lastTokenDragUpdate >= TOKEN_DRAG_THROTTLE_MS) {
             lastTokenDragUpdate = now;
-            wsClient.updateTokenDrag(draggedToken.id, playerId, newX, newY);
+            wsClient.updateTokenDrag(draggedToken.id, playerId, newX, newY, toolState.startX, toolState.startY);
           }
         }
       } else if (toolState.currentTool !== 'pan-zoom') {

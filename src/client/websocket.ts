@@ -181,8 +181,8 @@ class WebSocketClient {
     this.send({ type: 'token:move-to-scene', tokenId, targetSceneId });
   }
 
-  updateTokenDrag(tokenId: string, playerId: string, x: number, y: number): void {
-    this.send({ type: 'token:drag:update', tokenId, playerId, x, y });
+  updateTokenDrag(tokenId: string, playerId: string, x: number, y: number, startX: number, startY: number): void {
+    this.send({ type: 'token:drag:update', tokenId, playerId, x, y, startX, startY });
   }
 
   clearTokenDrag(tokenId: string, playerId: string): void {

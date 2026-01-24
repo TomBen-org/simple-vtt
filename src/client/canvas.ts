@@ -18,6 +18,8 @@ export interface RemoteTokenDrag {
   tokenId: string;
   x: number;
   y: number;
+  startX: number;
+  startY: number;
 }
 
 let canvas: HTMLCanvasElement;
@@ -130,11 +132,11 @@ export function render(
     drawToken(token, token.id === selectedTokenId, highlightedTokenIds.has(token.id), map.gridSize, viewState);
   });
 
-  // Draw remote token drag previews (ghost tokens)
+  // Draw remote token drag previews (ghost tokens with movement lines)
   remoteTokenDrags.forEach((drag) => {
     const token = tokens.find(t => t.id === drag.tokenId);
     if (token) {
-      drawGhostToken(token, drag.x, drag.y, map.gridSize, viewState);
+      drawGhostToken(token, drag.x, drag.y, drag.startX, drag.startY, map.gridSize, viewState);
     }
   });
 
@@ -235,7 +237,7 @@ function drawToken(token: Token, selected: boolean, highlighted: boolean, gridSi
   }
 }
 
-function drawGhostToken(token: Token, x: number, y: number, gridSize: number, viewState: ViewState): void {
+function drawGhostToken(token: Token, x: number, y: number, startX: number, startY: number, gridSize: number, viewState: ViewState): void {
   // Calculate pixel dimensions from grid units
   const width = token.gridWidth * gridSize;
   const height = token.gridHeight * gridSize;
@@ -264,6 +266,30 @@ function drawGhostToken(token: Token, x: number, y: number, gridSize: number, vi
   ctx.setLineDash([8, 4]);
   ctx.strokeRect(x - 2, y - 2, width + 4, height + 4);
   ctx.setLineDash([]);
+
+  // Draw movement line from start to current position (purple to match ghost)
+  const endX = x + width / 2;
+  const endY = y + height / 2;
+  const zoom = viewState.zoom;
+  const lineWidth = 2 / zoom;
+  const dashSize = 5 / zoom;
+  const feetPerCell = 5;
+
+  ctx.strokeStyle = '#a855f7';
+  ctx.lineWidth = lineWidth;
+  ctx.setLineDash([dashSize, dashSize]);
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw distance label
+  const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+  const feet = (distance / gridSize) * feetPerCell;
+  const midX = (startX + endX) / 2;
+  const midY = (startY + endY) / 2;
+  drawDistanceLabel(midX, midY, feet, undefined, zoom);
 
   ctx.restore();
 }
