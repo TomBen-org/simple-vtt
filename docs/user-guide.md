@@ -21,9 +21,49 @@ The main interface consists of:
 
 ## Navigation
 
-### Pan and Zoom
+### Pan and Zoom (Desktop)
 - **Pan**: Hold the right mouse button and drag to move around the map
 - **Zoom**: Use the scroll wheel to zoom in and out
+
+## Mobile / Touch Mode
+
+Simple VTT automatically detects touch input and switches to a mobile-optimized interface. This makes it easy to use on tablets and phones.
+
+### Automatic Detection
+- The app detects touch devices on load and switches to mobile mode
+- If you use a mouse, it automatically switches back to desktop mode
+- You can use both modes in the same session by switching input methods
+
+### Mobile Toolbar
+On mobile, you get a simplified toolbar with 5 large buttons:
+- **Pan/Zoom** - Navigate the map (default mode)
+- **Line** - Measure distances
+- **Circle** - Measure radius areas
+- **Cone** - Measure cone areas
+- **Fullscreen** - Toggle fullscreen for immersive play
+
+In landscape orientation, the toolbar moves to the left side of the screen.
+
+### Pan and Zoom (Touch)
+In Pan/Zoom mode:
+- **One finger drag** - Pan around the map
+- **Pinch with two fingers** - Zoom in and out
+
+### Moving Tokens on Mobile
+To move a token on mobile:
+1. Make sure you're in **Pan/Zoom** mode
+2. **Long-press** on a token (hold your finger for about half a second)
+3. Once selected, drag the token to its new position
+4. Release to place the token
+
+The long-press prevents accidental token moves while panning around the map.
+
+### Measurements on Mobile
+Select a measurement tool (Line, Circle, or Cone) from the toolbar, then touch and drag to measure. Other players will see your measurements in real-time.
+
+### Limitations on Mobile
+- Drawing mode is not available on mobile
+- Right-click context menu is not available (use desktop for token resizing/deletion)
 
 ## Tokens
 
@@ -123,6 +163,26 @@ Click the **Rename** button and enter a new name for the current scene.
 ### Deleting Scenes
 Click the **Delete** button to remove the current scene. You cannot delete the last remaining scene.
 
+## Drawing (Desktop Only)
+
+Toggle **Draw Mode** to reveal drawing tools. When enabled, mouse actions draw on a layer above the map but below tokens.
+
+### Drawing Tools
+- **Brush** - Freehand drawing with the selected color and size
+- **Eraser** - Erase parts of the drawing
+- **Line** - Click and drag to draw straight lines
+- **Rect** - Click and drag to draw filled rectangles
+- **Ellipse** - Click and drag to draw filled ellipses
+- **Fill** - Click to flood fill an area with the selected color
+- **Pick** - Click to sample a color from the canvas
+
+### Drawing Controls
+- **Color picker** - Select the drawing color
+- **Size slider** - Adjust brush/eraser size (1-100)
+- **Clear All** - Remove all drawings from the current scene (with confirmation)
+
+Drawings sync in real-time to all connected players and persist with the scene.
+
 ## Multiplayer
 
 ### Connecting
@@ -130,10 +190,12 @@ Simply open the same URL in multiple browsers or share the URL with your players
 
 ### What Syncs
 - Token positions and sizes
+- Token drag previews (other players see a ghost of the token as you drag it)
 - Map/background images
 - Grid settings (visibility, size, offset)
-- Active measurements
+- Active measurements (with distance display)
 - Scene changes
+- Drawings
 
 ### What Doesn't Sync
 - Snap-to-grid preference (each player controls their own)
