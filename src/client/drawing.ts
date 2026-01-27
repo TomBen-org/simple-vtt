@@ -1,6 +1,7 @@
 import { DrawTool, DrawStroke, ChunkKey, CHUNK_SIZE, worldToChunkKey, chunkKeyToWorld, getChunksInRect, generateId } from '../shared/types.js';
 import { ViewState } from './viewState.js';
 import { workerPool } from './floodFillWorkerPool.js';
+import { getDpr } from './canvas.js';
 
 export interface BrushSettings {
   tool: DrawTool;
@@ -566,11 +567,15 @@ export class DrawingLayer {
 
   render(ctx: CanvasRenderingContext2D, viewState: ViewState, opacity: number = 1): void {
     // Calculate visible bounds in world coordinates
+    // Use CSS pixel dimensions (canvas dimensions are physical pixels)
     const canvas = ctx.canvas;
+    const dpr = getDpr();
+    const cssWidth = canvas.width / dpr;
+    const cssHeight = canvas.height / dpr;
     const worldLeft = -viewState.panX / viewState.zoom;
     const worldTop = -viewState.panY / viewState.zoom;
-    const worldRight = (canvas.width - viewState.panX) / viewState.zoom;
-    const worldBottom = (canvas.height - viewState.panY) / viewState.zoom;
+    const worldRight = (cssWidth - viewState.panX) / viewState.zoom;
+    const worldBottom = (cssHeight - viewState.panY) / viewState.zoom;
 
     // Get visible chunks
     const visibleChunks = getChunksInRect(worldLeft, worldTop, worldRight, worldBottom);

@@ -25,6 +25,7 @@ export interface RemoteTokenDrag {
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 let backgroundMipmaps: HTMLCanvasElement[] | null = null;
+let currentDpr = window.devicePixelRatio || 1;
 
 export function initCanvas(canvasElement: HTMLCanvasElement): void {
   canvas = canvasElement;
@@ -35,26 +36,52 @@ export function initCanvas(canvasElement: HTMLCanvasElement): void {
   ctx = context;
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
+
+  // Listen for DPR changes (e.g., moving window between monitors)
+  function watchDprChange() {
+    const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    mq.addEventListener('change', () => {
+      resizeCanvas();
+      watchDprChange(); // Re-create listener for new DPR value
+    }, { once: true });
+  }
+  watchDprChange();
 }
 
 export function resizeCanvas(): void {
+  currentDpr = window.devicePixelRatio || 1;
   const isMobile = document.body.classList.contains('mobile-mode');
   const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+
+  let cssWidth: number;
+  let cssHeight: number;
 
   if (isMobile && isLandscape) {
     // Landscape mobile: toolbar on left side - use min(70px, 12vh) to match CSS
     const toolbarWidth = Math.min(70, window.innerHeight * 0.12);
-    canvas.width = window.innerWidth - toolbarWidth;
-    canvas.height = window.innerHeight;
+    cssWidth = window.innerWidth - toolbarWidth;
+    cssHeight = window.innerHeight;
   } else if (isMobile) {
     // Portrait mobile: toolbar on top (70px)
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight - 70;
+    cssWidth = window.innerWidth;
+    cssHeight = window.innerHeight - 70;
   } else {
     // Desktop: toolbar on top (60px)
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight - 60;
+    cssWidth = window.innerWidth;
+    cssHeight = window.innerHeight - 60;
   }
+
+  // Set backing store to physical pixels
+  canvas.width = cssWidth * currentDpr;
+  canvas.height = cssHeight * currentDpr;
+
+  // Set CSS size to maintain visual dimensions
+  canvas.style.width = cssWidth + 'px';
+  canvas.style.height = cssHeight + 'px';
+}
+
+export function getDpr(): number {
+  return currentDpr;
 }
 
 export function getCanvas(): HTMLCanvasElement {
@@ -105,6 +132,10 @@ export function render(
   const map = activeScene.map;
   const tokens = activeScene.tokens;
 
+  // Apply DPR scale so all drawing is in CSS pixels
+  ctx.save();
+  ctx.scale(currentDpr, currentDpr);
+
   // Apply view transform
   ctx.save();
   ctx.translate(viewState.panX, viewState.panY);
@@ -113,8 +144,9 @@ export function render(
   if (backgroundMipmaps) {
     const originalWidth = backgroundMipmaps[0].width;
     const originalHeight = backgroundMipmaps[0].height;
-    const targetWidth = originalWidth * viewState.zoom;
-    const targetHeight = originalHeight * viewState.zoom;
+    // Account for DPR when selecting mipmap to ensure sharp rendering on high-DPI displays
+    const targetWidth = originalWidth * viewState.zoom * currentDpr;
+    const targetHeight = originalHeight * viewState.zoom * currentDpr;
     const mipmap = selectMipmap(backgroundMipmaps, targetWidth, targetHeight);
     ctx.drawImage(mipmap, 0, 0, originalWidth, originalHeight);
   }
@@ -153,7 +185,8 @@ export function render(
     drawDragDropPreview(dragDropState, map.gridSize);
   }
 
-  ctx.restore();
+  ctx.restore(); // Restore view transform
+  ctx.restore(); // Restore DPR scale
 }
 
 function drawGrid(map: MapSettings, viewState: ViewState): void {
@@ -165,10 +198,13 @@ function drawGrid(map: MapSettings, viewState: ViewState): void {
   ctx.lineWidth = 1 / viewState.zoom; // Keep line width consistent at different zoom levels
 
   // Calculate visible bounds in world coordinates
+  // Use CSS pixel dimensions (canvas dimensions are physical pixels)
+  const cssWidth = canvas.width / currentDpr;
+  const cssHeight = canvas.height / currentDpr;
   const worldLeft = -viewState.panX / viewState.zoom;
   const worldTop = -viewState.panY / viewState.zoom;
-  const worldRight = (canvas.width - viewState.panX) / viewState.zoom;
-  const worldBottom = (canvas.height - viewState.panY) / viewState.zoom;
+  const worldRight = (cssWidth - viewState.panX) / viewState.zoom;
+  const worldBottom = (cssHeight - viewState.panY) / viewState.zoom;
 
   // Calculate grid line start/end positions (aligned to grid with offset)
   const startX = Math.floor((worldLeft - offsetX) / gridSize) * gridSize + offsetX;
@@ -198,9 +234,9 @@ function drawToken(token: Token, selected: boolean, highlighted: boolean, gridSi
   const width = token.gridWidth * gridSize;
   const height = token.gridHeight * gridSize;
 
-  // Calculate target pixel size accounting for zoom
-  const pixelWidth = width * viewState.zoom;
-  const pixelHeight = height * viewState.zoom;
+  // Calculate target pixel size accounting for zoom and DPR for sharp rendering on high-DPI displays
+  const pixelWidth = width * viewState.zoom * currentDpr;
+  const pixelHeight = height * viewState.zoom * currentDpr;
 
   // Get the appropriate mipmap for this zoom level
   const mipmap = getTokenMipmap(token.imageUrl, pixelWidth, pixelHeight);
@@ -242,9 +278,9 @@ function drawGhostToken(token: Token, x: number, y: number, startX: number, star
   const width = token.gridWidth * gridSize;
   const height = token.gridHeight * gridSize;
 
-  // Calculate target pixel size accounting for zoom
-  const pixelWidth = width * viewState.zoom;
-  const pixelHeight = height * viewState.zoom;
+  // Calculate target pixel size accounting for zoom and DPR for sharp rendering on high-DPI displays
+  const pixelWidth = width * viewState.zoom * currentDpr;
+  const pixelHeight = height * viewState.zoom * currentDpr;
 
   // Get the appropriate mipmap for this zoom level
   const mipmap = getTokenMipmap(token.imageUrl, pixelWidth, pixelHeight);
