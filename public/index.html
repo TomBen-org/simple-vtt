@@ -8,42 +8,69 @@
 </head>
 <body>
   <div id="toolbar">
-    <div class="toolbar-section">
-      <span class="section-label">Tools</span>
-      <button class="tool-btn active" data-tool="move" title="Move Tokens">Move</button>
-      <label>
-        <input type="checkbox" id="snap-toggle" checked>
-        Snap
-      </label>
-      <button class="tool-btn" data-tool="line" title="Measure Line">Line</button>
-      <button class="tool-btn" data-tool="circle" title="Measure Circle">Circle</button>
-      <button class="tool-btn" data-tool="cone" title="Measure Cone">Cone</button>
+    <button id="collapse-all-btn" class="collapse-all-btn" title="Collapse All">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+      </svg>
+    </button>
+
+    <div class="toolbar-section collapsible" id="tools-section">
+      <button class="section-toggle" data-section="tools" title="Tools">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4l7 17 2.5-7.5L21 11 4 4z"/>
+        </svg>
+      </button>
+      <div class="section-content">
+        <button class="tool-btn active" data-tool="move" title="Move Tokens">Move</button>
+        <label>
+          <input type="checkbox" id="snap-toggle" checked>
+          Snap
+        </label>
+        <button class="tool-btn" data-tool="line" title="Measure Line">Line</button>
+        <button class="tool-btn" data-tool="circle" title="Measure Circle">Circle</button>
+        <button class="tool-btn" data-tool="cone" title="Measure Cone">Cone</button>
+      </div>
     </div>
 
-    <div class="toolbar-section">
-      <span class="section-label">Upload</span>
-      <button id="upload-map-btn">Map</button>
-      <input type="file" id="map-input" accept="image/*" hidden>
-      <button id="upload-token-btn">Token</button>
-      <input type="file" id="token-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+    <div class="toolbar-section collapsible collapsed" id="upload-section">
+      <button class="section-toggle" data-section="upload" title="Upload">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </button>
+      <div class="section-content">
+        <button id="upload-map-btn">Map</button>
+        <input type="file" id="map-input" accept="image/*" hidden>
+        <button id="upload-token-btn">Token</button>
+        <input type="file" id="token-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+      </div>
     </div>
 
-    <div class="toolbar-section">
-      <span class="section-label">Scene</span>
-      <select id="scene-select"></select>
-      <button id="scene-add" title="New Scene">+</button>
-      <button id="scene-rename" title="Rename Scene">Rename</button>
-      <button id="scene-delete" title="Delete Scene">Delete</button>
+    <div class="toolbar-section collapsible collapsed" id="scene-section">
+      <button class="section-toggle" data-section="scene" title="Scene">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </button>
+      <div class="section-content">
+        <select id="scene-select"></select>
+        <button id="scene-add" title="New Scene">+</button>
+        <button id="scene-rename" title="Rename Scene">Rename</button>
+        <button id="scene-delete" title="Delete Scene">Delete</button>
+      </div>
     </div>
 
-    <div class="toolbar-section collapsible">
-      <button class="collapse-btn" id="grid-collapse-btn" title="Toggle grid settings">▶</button>
-      <span class="section-label">Grid</span>
-      <label>
-        <input type="checkbox" id="grid-toggle" checked>
-        Show
-      </label>
-      <div class="collapsible-content collapsed" id="grid-settings">
+    <div class="toolbar-section collapsible collapsed" id="grid-section">
+      <button class="section-toggle" data-section="grid" title="Grid">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/>
+        </svg>
+      </button>
+      <div class="section-content">
+        <label>
+          <input type="checkbox" id="grid-toggle" checked>
+          Show
+        </label>
         <label class="grid-control">
           Size:
           <button class="grid-btn" id="grid-size-dec">−</button>
@@ -66,10 +93,13 @@
       </div>
     </div>
 
-    <div class="toolbar-section collapsible" id="draw-section">
-      <button class="collapse-btn" id="draw-collapse-btn" title="Toggle draw tools">▶</button>
-      <span class="section-label">Draw</span>
-      <div class="collapsible-content collapsed" id="draw-tools">
+    <div class="toolbar-section collapsible collapsed" id="draw-section">
+      <button class="section-toggle" data-section="draw" title="Draw">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+        </svg>
+      </button>
+      <div class="section-content" id="draw-tools">
         <button class="draw-tool-btn active" data-draw-tool="brush" title="Brush">Brush</button>
         <button class="draw-tool-btn" data-draw-tool="line" title="Line">Line</button>
         <button class="draw-tool-btn" data-draw-tool="rect" title="Rectangle">Rect</button>

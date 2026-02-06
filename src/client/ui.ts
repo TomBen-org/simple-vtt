@@ -1,6 +1,40 @@
 import { Tool } from './tools.js';
 import { MapSettings, Scene, DrawTool } from '../shared/types.js';
 
+const TOOLBAR_SECTIONS_KEY = 'simple-vtt-toolbar-sections';
+
+interface ToolbarSectionState {
+  tools: boolean;
+  upload: boolean;
+  scene: boolean;
+  grid: boolean;
+  draw: boolean;
+}
+
+const DEFAULT_SECTIONS: ToolbarSectionState = {
+  tools: true,    // expanded by default
+  upload: false,
+  scene: false,
+  grid: false,
+  draw: false,
+};
+
+function loadSectionState(): ToolbarSectionState {
+  try {
+    const stored = localStorage.getItem(TOOLBAR_SECTIONS_KEY);
+    if (stored) {
+      return { ...DEFAULT_SECTIONS, ...JSON.parse(stored) };
+    }
+  } catch (e) {}
+  return { ...DEFAULT_SECTIONS };
+}
+
+function saveSectionState(state: ToolbarSectionState): void {
+  try {
+    localStorage.setItem(TOOLBAR_SECTIONS_KEY, JSON.stringify(state));
+  } catch (e) {}
+}
+
 type ToolChangeHandler = (tool: Tool) => void;
 type MapUploadHandler = (file: File) => void;
 type TokenUploadHandler = (file: File) => void;
@@ -37,6 +71,53 @@ let onDrawingOpacityChange: DrawingOpacityChangeHandler | null = null;
 let onEraseModeChange: EraseModeChangeHandler | null = null;
 
 export function initUI(): void {
+  // Load and apply section state
+  const sectionState = loadSectionState();
+  const sections = ['tools', 'upload', 'scene', 'grid', 'draw'] as const;
+  sections.forEach(id => {
+    const el = document.getElementById(`${id}-section`);
+    if (el) el.classList.toggle('collapsed', !sectionState[id]);
+  });
+
+  // Section toggle buttons
+  document.querySelectorAll('.section-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-section') as keyof ToolbarSectionState;
+      if (!id) return;
+      const el = document.getElementById(`${id}-section`);
+      if (!el) return;
+
+      const wasCollapsed = el.classList.contains('collapsed');
+      el.classList.toggle('collapsed', !wasCollapsed);
+      sectionState[id] = wasCollapsed; // now expanded
+      saveSectionState(sectionState);
+
+      // Special: draw mode toggle
+      if (id === 'draw') {
+        if (onDrawModeChange) {
+          onDrawModeChange(wasCollapsed);
+        }
+        if (wasCollapsed) {
+          document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        }
+      }
+    });
+  });
+
+  // Collapse all button
+  const collapseAllBtn = document.getElementById('collapse-all-btn');
+  if (collapseAllBtn) {
+    collapseAllBtn.addEventListener('click', () => {
+      sections.forEach(id => {
+        const el = document.getElementById(`${id}-section`);
+        if (el) el.classList.add('collapsed');
+        sectionState[id] = false;
+      });
+      saveSectionState(sectionState);
+      if (onDrawModeChange) onDrawModeChange(false);
+    });
+  }
+
   document.querySelectorAll('.tool-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const tool = btn.getAttribute('data-tool') as Tool;
@@ -158,15 +239,6 @@ export function initUI(): void {
     });
   }
 
-  // Grid section collapse toggle
-  const collapseBtn = document.getElementById('grid-collapse-btn');
-  const gridSettings = document.getElementById('grid-settings');
-  if (collapseBtn && gridSettings) {
-    collapseBtn.addEventListener('click', () => {
-      const isCollapsed = gridSettings.classList.toggle('collapsed');
-      collapseBtn.textContent = isCollapsed ? '▶' : '▼';
-    });
-  }
 
   // Scene selector
   const sceneSelect = document.getElementById('scene-select') as HTMLSelectElement;
@@ -212,27 +284,6 @@ export function initUI(): void {
     });
   }
 
-  // Draw section collapse toggle - also controls draw mode
-  const drawCollapseBtn = document.getElementById('draw-collapse-btn');
-  const drawTools = document.getElementById('draw-tools');
-  if (drawCollapseBtn && drawTools) {
-    drawCollapseBtn.addEventListener('click', () => {
-      const isCollapsed = drawTools.classList.toggle('collapsed');
-      drawCollapseBtn.textContent = isCollapsed ? '▶' : '▼';
-      const isDrawMode = !isCollapsed;
-
-      // Deselect other tools when entering draw mode
-      if (isDrawMode) {
-        document.querySelectorAll('.tool-btn').forEach(btn => {
-          btn.classList.remove('active');
-        });
-      }
-
-      if (onDrawModeChange) {
-        onDrawModeChange(isDrawMode);
-      }
-    });
-  }
 
   // Draw tool buttons
   document.querySelectorAll('.draw-tool-btn').forEach(btn => {
@@ -323,12 +374,16 @@ export function setActiveTool(tool: Tool): void {
     }
   });
 
-  // Close draw tools when selecting a regular tool
-  const drawCollapseBtn = document.getElementById('draw-collapse-btn');
-  const drawTools = document.getElementById('draw-tools');
-  if (drawCollapseBtn && drawTools && !drawTools.classList.contains('collapsed')) {
-    drawTools.classList.add('collapsed');
-    drawCollapseBtn.textContent = '▶';
+  // Close draw section when selecting a regular tool
+  const drawSection = document.getElementById('draw-section');
+  if (drawSection && !drawSection.classList.contains('collapsed')) {
+    drawSection.classList.add('collapsed');
+    // Update localStorage
+    try {
+      const state = loadSectionState();
+      state.draw = false;
+      saveSectionState(state);
+    } catch (e) {}
     if (onDrawModeChange) {
       onDrawModeChange(false);
     }
@@ -383,11 +438,15 @@ export function getIsMobileMode(): boolean {
 }
 
 export function setDrawModeEnabled(enabled: boolean): void {
-  const drawCollapseBtn = document.getElementById('draw-collapse-btn');
-  const drawTools = document.getElementById('draw-tools');
-  if (drawCollapseBtn && drawTools) {
-    drawTools.classList.toggle('collapsed', !enabled);
-    drawCollapseBtn.textContent = enabled ? '▼' : '▶';
+  const drawSection = document.getElementById('draw-section');
+  if (drawSection) {
+    drawSection.classList.toggle('collapsed', !enabled);
+    // Update localStorage
+    try {
+      const state = loadSectionState();
+      state.draw = enabled;
+      saveSectionState(state);
+    } catch (e) {}
   }
   if (enabled) {
     // Deselect other tools when entering draw mode
