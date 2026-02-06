@@ -119,15 +119,17 @@ body {
   padding: 6px 10px;
 }
 
-/* DM mode toggle button */
+/* Toolbar spacer */
 .toolbar-spacer {
   flex: 1;
 }
 
-.dm-mode-btn {
-  width: 36px;
-  height: 36px;
-  padding: 6px;
+/* Toggle switch button (like a light switch) */
+.toggle-switch {
+  position: relative;
+  width: 52px;
+  height: 32px;
+  padding: 4px;
   border: 1px solid #444;
   border-radius: 4px;
   background: #2a2a3e;
@@ -135,19 +137,63 @@ body {
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   flex-shrink: 0;
+  overflow: hidden;
 }
-.dm-mode-btn:hover {
+.toggle-switch:hover {
   background: #3a3a4e;
+  border-color: #555;
+}
+.toggle-switch .toggle-slider {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  bottom: 3px;
+  width: 22px;
+  background: #555;
+  border-radius: 2px;
+  transition: left 0.15s ease, background 0.15s ease;
+}
+.toggle-switch.active .toggle-slider {
+  left: calc(100% - 25px);
+  background: #7a7aae;
+}
+.toggle-switch svg {
+  width: 16px;
+  height: 16px;
+  z-index: 1;
+  margin-right: 2px;
+  transition: color 0.15s ease;
+}
+.toggle-switch.active {
+  background: #4a4a6e;
+  border-color: #6a6a8e;
   color: #fff;
 }
-.dm-mode-btn.active {
-  background: #6a4a6e;
-  border-color: #9a6a9e;
+.toggle-switch.active svg {
   color: #fff;
 }
-.dm-mode-btn svg {
+
+/* Icon buttons (square buttons with SVG icons) */
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.tool-btn.icon-btn {
+  width: 32px;
+  height: 32px;
+  padding: 5px;
+}
+.tool-btn.icon-btn svg {
   width: 18px;
   height: 18px;
 }
@@ -436,13 +482,6 @@ label {
   border: none;
 }
 
-.erase-mode-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: #ccc;
-}
 
 .brush-size-label {
   display: flex;

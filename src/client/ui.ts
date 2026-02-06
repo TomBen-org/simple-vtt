@@ -173,7 +173,7 @@ export function initUI(): void {
     });
   }
 
-  const gridToggle = document.getElementById('grid-toggle') as HTMLInputElement;
+  const gridToggle = document.getElementById('grid-toggle') as HTMLButtonElement;
   const gridSizeInput = document.getElementById('grid-size') as HTMLInputElement;
   const gridOffsetXInput = document.getElementById('grid-offset-x') as HTMLInputElement;
   const gridOffsetYInput = document.getElementById('grid-offset-y') as HTMLInputElement;
@@ -181,7 +181,7 @@ export function initUI(): void {
   function triggerGridChange(): void {
     if (onGridChange && gridToggle && gridSizeInput && gridOffsetXInput && gridOffsetYInput) {
       onGridChange(
-        gridToggle.checked,
+        gridToggle.classList.contains('active'),
         parseFloat(gridSizeInput.value) || 50,
         parseFloat(gridOffsetXInput.value) || 0,
         parseFloat(gridOffsetYInput.value) || 0
@@ -190,7 +190,10 @@ export function initUI(): void {
   }
 
   if (gridToggle) {
-    gridToggle.addEventListener('change', triggerGridChange);
+    gridToggle.addEventListener('click', () => {
+      gridToggle.classList.toggle('active');
+      triggerGridChange();
+    });
   }
   if (gridSizeInput) {
     gridSizeInput.addEventListener('change', triggerGridChange);
@@ -251,11 +254,12 @@ export function initUI(): void {
     });
   }
 
-  const snapToggle = document.getElementById('snap-toggle') as HTMLInputElement;
+  const snapToggle = document.getElementById('snap-toggle') as HTMLButtonElement;
   if (snapToggle) {
-    snapToggle.addEventListener('change', () => {
+    snapToggle.addEventListener('click', () => {
+      snapToggle.classList.toggle('active');
       if (onSnapChange) {
-        onSnapChange(snapToggle.checked);
+        onSnapChange(snapToggle.classList.contains('active'));
       }
     });
   }
@@ -365,12 +369,13 @@ export function initUI(): void {
     });
   }
 
-  // Erase mode checkbox
-  const eraseModeToggle = document.getElementById('erase-mode-toggle') as HTMLInputElement;
+  // Erase mode toggle
+  const eraseModeToggle = document.getElementById('erase-mode-toggle') as HTMLButtonElement;
   if (eraseModeToggle) {
-    eraseModeToggle.addEventListener('change', () => {
+    eraseModeToggle.addEventListener('click', () => {
+      eraseModeToggle.classList.toggle('active');
       if (onEraseModeChange) {
-        onEraseModeChange(eraseModeToggle.checked);
+        onEraseModeChange(eraseModeToggle.classList.contains('active'));
       }
     });
   }
@@ -478,12 +483,12 @@ export function setDrawModeEnabled(enabled: boolean): void {
 }
 
 export function updateUIFromState(map: MapSettings): void {
-  const gridToggle = document.getElementById('grid-toggle') as HTMLInputElement;
+  const gridToggle = document.getElementById('grid-toggle') as HTMLButtonElement;
   const gridSizeInput = document.getElementById('grid-size') as HTMLInputElement;
   const gridOffsetXInput = document.getElementById('grid-offset-x') as HTMLInputElement;
   const gridOffsetYInput = document.getElementById('grid-offset-y') as HTMLInputElement;
 
-  if (gridToggle) gridToggle.checked = map.gridEnabled;
+  if (gridToggle) gridToggle.classList.toggle('active', map.gridEnabled);
   if (gridSizeInput) gridSizeInput.value = map.gridSize.toString();
   if (gridOffsetXInput) gridOffsetXInput.value = (map.gridOffsetX || 0).toString();
   if (gridOffsetYInput) gridOffsetYInput.value = (map.gridOffsetY || 0).toString();

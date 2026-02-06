@@ -21,18 +21,42 @@
         </svg>
       </button>
       <div class="section-content">
-        <button class="tool-btn active" data-tool="move" title="Move Tokens">Move</button>
-        <label>
-          <input type="checkbox" id="snap-toggle" checked>
-          Snap
-        </label>
-        <label>
-          <input type="checkbox" id="grid-toggle" checked>
-          Grid
-        </label>
-        <button class="tool-btn" data-tool="line" title="Measure Line">Line</button>
-        <button class="tool-btn" data-tool="circle" title="Measure Circle">Circle</button>
-        <button class="tool-btn" data-tool="cone" title="Measure Cone">Cone</button>
+        <button class="tool-btn icon-btn active" data-tool="move" title="Move Tokens">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>
+          </svg>
+        </button>
+        <button class="toggle-switch active" id="snap-toggle" title="Snap to Grid">
+          <span class="toggle-slider"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z"/>
+            <path d="M12 3v18M3 12h18"/>
+          </svg>
+        </button>
+        <button class="toggle-switch active" id="grid-toggle" title="Toggle Grid">
+          <span class="toggle-slider"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/>
+          </svg>
+        </button>
+        <button class="tool-btn icon-btn" data-tool="line" title="Measure Line">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="20" x2="20" y2="4"/>
+            <circle cx="4" cy="20" r="2"/>
+            <circle cx="20" cy="4" r="2"/>
+          </svg>
+        </button>
+        <button class="tool-btn icon-btn" data-tool="circle" title="Measure Circle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"/>
+            <circle cx="12" cy="12" r="1"/>
+          </svg>
+        </button>
+        <button class="tool-btn icon-btn" data-tool="cone" title="Measure Cone">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 4L4 20L20 20Z"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -58,9 +82,21 @@
       </button>
       <div class="section-content">
         <select id="scene-select"></select>
-        <button id="scene-add" title="New Scene">+</button>
-        <button id="scene-rename" title="Rename Scene">Rename</button>
-        <button id="scene-delete" title="Delete Scene">Delete</button>
+        <button class="icon-btn" id="scene-add" title="New Scene">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="scene-rename" title="Rename Scene">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="scene-delete" title="Delete Scene">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -135,10 +171,13 @@
           </svg>
         </button>
         <input type="color" id="draw-color" value="#ff0000" title="Draw Color">
-        <label class="erase-mode-label">
-          <input type="checkbox" id="erase-mode-toggle">
-          Erase
-        </label>
+        <button class="toggle-switch" id="erase-mode-toggle" title="Erase Mode">
+          <span class="toggle-slider"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 20H7L3 16a1 1 0 010-1.4l9.9-9.9a1 1 0 011.4 0l5.7 5.7a1 1 0 010 1.4L11.2 20"/>
+            <path d="M6 11l7 7"/>
+          </svg>
+        </button>
         <label class="brush-size-label">
           Size:
           <input type="range" id="brush-size" min="1" max="100" value="10">
@@ -155,13 +194,12 @@
 
     <div class="toolbar-spacer"></div>
 
-    <button id="dm-mode-btn" class="dm-mode-btn" title="Toggle DM Mode">
+    <button class="toggle-switch" id="dm-mode-btn" title="Toggle DM Mode">
+      <span class="toggle-slider"></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-        <path d="M12 22V12"/>
-        <circle cx="12" cy="8" r="2"/>
-        <path d="M20 7v10"/>
-        <path d="M4 7v10"/>
+        <circle cx="12" cy="8" r="5"/>
+        <path d="M3 21v-2a7 7 0 017-7h4a7 7 0 017 7v2"/>
+        <path d="M12 11v4M10 13h4"/>
       </svg>
     </button>
   </div>
