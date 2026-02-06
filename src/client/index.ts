@@ -26,6 +26,7 @@ import {
   setDrawColor,
   setOnDrawingOpacityChange,
   setOnEraseModeChange,
+  setOnDmModeToggle,
   setMobileMode,
   getIsMobileMode,
 } from './ui.js';
@@ -451,6 +452,8 @@ function setupEventHandlers(): void {
     // Exit draw mode when selecting a regular tool
     drawModeEnabled = false;
     getActiveDrawingLayer().updateCursor(0, 0, false);
+    // Deselect any active draw tool
+    document.querySelectorAll('.draw-tool-btn').forEach(btn => btn.classList.remove('active'));
   });
 
   setOnMapUpload(async (file: File) => {
@@ -558,6 +561,17 @@ function setupEventHandlers(): void {
 
   setOnEraseModeChange((enabled: boolean) => {
     getActiveDrawingLayer().setBrush({ eraseMode: enabled });
+  });
+
+  // Sync brush settings when DM mode is toggled
+  setOnDmModeToggle((isNowDm: boolean) => {
+    if (drawModeEnabled) {
+      // Copy brush settings from the old layer to the new active layer
+      const oldLayer = isNowDm ? playerDrawingLayer : dmDrawingLayer;
+      const newLayer = isNowDm ? dmDrawingLayer : playerDrawingLayer;
+      const brush = oldLayer.getBrush();
+      newLayer.setBrush(brush);
+    }
   });
 }
 

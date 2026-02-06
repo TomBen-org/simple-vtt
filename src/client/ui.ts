@@ -52,6 +52,7 @@ type DrawBrushSizeChangeHandler = (size: number) => void;
 type DrawClearHandler = () => void;
 type DrawingOpacityChangeHandler = (opacity: number) => void;
 type EraseModeChangeHandler = (enabled: boolean) => void;
+type DmModeToggleHandler = (isDmMode: boolean) => void;
 
 let onToolChange: ToolChangeHandler | null = null;
 let isMobileMode = false;
@@ -70,6 +71,7 @@ let onDrawBrushSizeChange: DrawBrushSizeChangeHandler | null = null;
 let onDrawClear: DrawClearHandler | null = null;
 let onDrawingOpacityChange: DrawingOpacityChangeHandler | null = null;
 let onEraseModeChange: EraseModeChangeHandler | null = null;
+let onDmModeToggle: DmModeToggleHandler | null = null;
 
 export function initUI(): void {
   // Load and apply section state
@@ -136,6 +138,9 @@ export function initUI(): void {
       try {
         localStorage.setItem(DM_MODE_KEY, String(isNowDmMode));
       } catch (e) {}
+      if (onDmModeToggle) {
+        onDmModeToggle(isNowDmMode);
+      }
     });
   }
 
@@ -525,4 +530,8 @@ export function setOnDrawingOpacityChange(handler: DrawingOpacityChangeHandler):
 
 export function setOnEraseModeChange(handler: EraseModeChangeHandler): void {
   onEraseModeChange = handler;
+}
+
+export function setOnDmModeToggle(handler: DmModeToggleHandler): void {
+  onDmModeToggle = handler;
 }
