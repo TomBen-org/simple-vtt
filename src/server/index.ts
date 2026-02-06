@@ -5,13 +5,16 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { setupWebSocket } from './websocket';
-import { getUploadsDir, ensureDataDir, garbageCollect } from './persistence';
+import { getUploadsDir, ensureDataDir, garbageCollect, migrateDrawingsToLayers } from './persistence';
 import { stateManager } from './state';
 
 const app = express();
 const PORT = process.env.PORT || 30000;
 
 ensureDataDir();
+
+// Migrate old drawing directory structure to layer subdirectories
+migrateDrawingsToLayers();
 
 // Garbage collect orphaned files on startup
 const gcResult = garbageCollect(stateManager.getState());

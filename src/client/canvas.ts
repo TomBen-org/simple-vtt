@@ -116,7 +116,8 @@ export function render(
   remoteMeasurements: Map<string, Measurement> = new Map(),
   highlightedTokenIds: Set<string> = new Set(),
   dragDropState: DragDropState | null = null,
-  drawingLayer: DrawingLayer | null = null,
+  dmDrawingLayer: DrawingLayer | null = null,
+  playerDrawingLayer: DrawingLayer | null = null,
   drawingOpacity: number = 1,
   remoteTokenDrags: Map<string, RemoteTokenDrag> = new Map()
 ): void {
@@ -151,9 +152,12 @@ export function render(
     ctx.drawImage(mipmap, 0, 0, originalWidth, originalHeight);
   }
 
-  // Render drawing layer (above background, below grid)
-  if (drawingLayer) {
-    drawingLayer.render(ctx, viewState, drawingOpacity);
+  // Render drawing layers (above background, below grid) - DM below, player on top
+  if (dmDrawingLayer) {
+    dmDrawingLayer.render(ctx, viewState, drawingOpacity);
+  }
+  if (playerDrawingLayer) {
+    playerDrawingLayer.render(ctx, viewState, drawingOpacity);
   }
 
   if (map.gridEnabled) {

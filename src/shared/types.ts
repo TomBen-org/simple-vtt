@@ -9,6 +9,7 @@ export interface Token {
 }
 
 // Drawing layer types
+export type DrawLayerType = 'dm' | 'player';
 export const CHUNK_SIZE = 512;
 export type ChunkKey = string;  // e.g., "0,0", "-1,2"
 
@@ -101,11 +102,11 @@ export type WSMessage =
   | { type: 'scene:delete'; sceneId: string }
   | { type: 'scene:switch'; sceneId: string }
   | { type: 'scene:rename'; sceneId: string; name: string }
-  | { type: 'draw:stroke'; sceneId: string; stroke: DrawStroke }
-  | { type: 'draw:chunk'; sceneId: string; chunkKey: ChunkKey; data: string; version: number }
+  | { type: 'draw:stroke'; sceneId: string; layer: DrawLayerType; stroke: DrawStroke }
+  | { type: 'draw:chunk'; sceneId: string; layer: DrawLayerType; chunkKey: ChunkKey; data: string; version: number }
   | { type: 'draw:sync-request'; sceneId: string }
-  | { type: 'draw:sync'; sceneId: string; chunks: Record<ChunkKey, string>; version: number }
-  | { type: 'draw:clear'; sceneId: string }
+  | { type: 'draw:sync'; sceneId: string; dmChunks: Record<ChunkKey, string>; playerChunks: Record<ChunkKey, string>; dmVersion: number; playerVersion: number }
+  | { type: 'draw:clear'; sceneId: string; layers: DrawLayerType[] }
   | { type: 'token:move-to-scene'; tokenId: string; targetSceneId: string }
   | { type: 'token:drag:update'; tokenId: string; playerId: string; x: number; y: number; startX: number; startY: number }
   | { type: 'token:drag:clear'; tokenId: string; playerId: string };

@@ -1,4 +1,4 @@
-import { GameState, Token, Scene, DEFAULT_MAP_SETTINGS, generateId, ChunkKey, DrawingLayer } from '../shared/types';
+import { GameState, Token, Scene, DEFAULT_MAP_SETTINGS, generateId, ChunkKey, DrawingLayer, DrawLayerType } from '../shared/types';
 import { loadState, saveState, saveChunk, loadAllChunks, clearSceneDrawing, deleteChunk } from './persistence';
 
 class StateManager {
@@ -171,57 +171,30 @@ class StateManager {
   }
 
   // Drawing layer methods
-  updateDrawingChunk(sceneId: string, chunkKey: ChunkKey, data: string): number {
-    const scene = this.state.scenes.find(s => s.id === sceneId);
-    if (!scene) return 0;
-
-    // Initialize drawing layer if needed
-    if (!scene.drawing) {
-      scene.drawing = { chunks: {}, version: 0 };
-    }
-
-    // Update chunk in memory
-    scene.drawing.chunks[chunkKey] = data;
-    scene.drawing.version = Date.now();
-
+  updateDrawingChunk(sceneId: string, layer: DrawLayerType, chunkKey: ChunkKey, data: string): number {
     // Save to disk
-    saveChunk(sceneId, chunkKey, data);
-
-    return scene.drawing.version;
+    saveChunk(sceneId, layer, chunkKey, data);
+    return Date.now();
   }
 
-  deleteDrawingChunk(sceneId: string, chunkKey: ChunkKey): number {
-    const scene = this.state.scenes.find(s => s.id === sceneId);
-    if (!scene || !scene.drawing) return 0;
-
-    // Remove chunk from memory
-    delete scene.drawing.chunks[chunkKey];
-    scene.drawing.version = Date.now();
-
-    // Delete from disk
-    deleteChunk(sceneId, chunkKey);
-
-    return scene.drawing.version;
+  deleteDrawingChunk(sceneId: string, layer: DrawLayerType, chunkKey: ChunkKey): number {
+    deleteChunk(sceneId, layer, chunkKey);
+    return Date.now();
   }
 
-  getDrawingLayer(sceneId: string): DrawingLayer {
-    const scene = this.state.scenes.find(s => s.id === sceneId);
-
-    // Always load from disk - PNG files are the source of truth
-    // (state.json chunks may be stale after server restart)
-    const loaded = loadAllChunks(sceneId);
-    if (scene) {
-      scene.drawing = loaded;
-    }
-    return loaded;
+  getDrawingLayer(sceneId: string, layer: DrawLayerType): DrawingLayer {
+    return loadAllChunks(sceneId, layer);
   }
 
-  clearDrawingLayer(sceneId: string): void {
-    const scene = this.state.scenes.find(s => s.id === sceneId);
-    if (scene) {
-      scene.drawing = { chunks: {}, version: Date.now() };
-    }
-    clearSceneDrawing(sceneId);
+  getDrawingLayers(sceneId: string): { dm: DrawingLayer; player: DrawingLayer } {
+    return {
+      dm: loadAllChunks(sceneId, 'dm'),
+      player: loadAllChunks(sceneId, 'player'),
+    };
+  }
+
+  clearDrawingLayer(sceneId: string, layers: DrawLayerType[]): void {
+    clearSceneDrawing(sceneId, layers);
   }
 
   private persist(): void {

@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { GameState, Scene, DEFAULT_MAP_SETTINGS, generateId, createDefaultGameState, ChunkKey, DrawingLayer } from '../shared/types';
+import { GameState, Scene, DEFAULT_MAP_SETTINGS, generateId, createDefaultGameState, ChunkKey, DrawingLayer, DrawLayerType } from '../shared/types';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
@@ -97,16 +97,16 @@ export function getUploadsDir(): string {
 }
 
 // Drawing persistence functions
-export function getDrawingsDir(sceneId: string): string {
-  const drawingsDir = path.join(DRAWINGS_DIR, sceneId);
+export function getDrawingsDir(sceneId: string, layer: DrawLayerType): string {
+  const drawingsDir = path.join(DRAWINGS_DIR, sceneId, layer);
   if (!fs.existsSync(drawingsDir)) {
     fs.mkdirSync(drawingsDir, { recursive: true });
   }
   return drawingsDir;
 }
 
-export function saveChunk(sceneId: string, chunkKey: ChunkKey, base64Data: string): void {
-  const dir = getDrawingsDir(sceneId);
+export function saveChunk(sceneId: string, layer: DrawLayerType, chunkKey: ChunkKey, base64Data: string): void {
+  const dir = getDrawingsDir(sceneId, layer);
   const filePath = path.join(dir, `${chunkKey}.png`);
 
   // Remove the data URL prefix if present
@@ -116,8 +116,8 @@ export function saveChunk(sceneId: string, chunkKey: ChunkKey, base64Data: strin
   fs.writeFileSync(filePath, buffer);
 }
 
-export function loadChunk(sceneId: string, chunkKey: ChunkKey): string | null {
-  const dir = getDrawingsDir(sceneId);
+export function loadChunk(sceneId: string, layer: DrawLayerType, chunkKey: ChunkKey): string | null {
+  const dir = getDrawingsDir(sceneId, layer);
   const filePath = path.join(dir, `${chunkKey}.png`);
 
   if (!fs.existsSync(filePath)) {
@@ -133,8 +133,8 @@ export function loadChunk(sceneId: string, chunkKey: ChunkKey): string | null {
   }
 }
 
-export function loadAllChunks(sceneId: string): DrawingLayer {
-  const dir = getDrawingsDir(sceneId);
+export function loadAllChunks(sceneId: string, layer: DrawLayerType): DrawingLayer {
+  const dir = getDrawingsDir(sceneId, layer);
   const chunks: Record<ChunkKey, string> = {};
 
   if (!fs.existsSync(dir)) {
@@ -152,32 +152,36 @@ export function loadAllChunks(sceneId: string): DrawingLayer {
       }
     }
   } catch (error) {
-    console.error(`Error loading chunks for scene ${sceneId}:`, error);
+    console.error(`Error loading chunks for scene ${sceneId}/${layer}:`, error);
   }
 
   return { chunks, version: Date.now() };
 }
 
-export function clearSceneDrawing(sceneId: string): void {
-  const dir = path.join(DRAWINGS_DIR, sceneId);
+export function clearSceneDrawing(sceneId: string, layers?: DrawLayerType[]): void {
+  const layersToClean = layers || ['dm', 'player'] as DrawLayerType[];
 
-  if (!fs.existsSync(dir)) {
-    return;
-  }
+  for (const layer of layersToClean) {
+    const dir = path.join(DRAWINGS_DIR, sceneId, layer);
 
-  try {
-    const files = fs.readdirSync(dir);
-    for (const file of files) {
-      fs.unlinkSync(path.join(dir, file));
+    if (!fs.existsSync(dir)) {
+      continue;
     }
-    fs.rmdirSync(dir);
-  } catch (error) {
-    console.error(`Error clearing drawing for scene ${sceneId}:`, error);
+
+    try {
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        fs.unlinkSync(path.join(dir, file));
+      }
+      fs.rmdirSync(dir);
+    } catch (error) {
+      console.error(`Error clearing drawing for scene ${sceneId}/${layer}:`, error);
+    }
   }
 }
 
-export function deleteChunk(sceneId: string, chunkKey: ChunkKey): void {
-  const dir = getDrawingsDir(sceneId);
+export function deleteChunk(sceneId: string, layer: DrawLayerType, chunkKey: ChunkKey): void {
+  const dir = getDrawingsDir(sceneId, layer);
   const filePath = path.join(dir, `${chunkKey}.png`);
 
   if (fs.existsSync(filePath)) {
@@ -249,13 +253,7 @@ export function garbageCollect(state: GameState): GarbageCollectResult {
         if (!validSceneIds.has(dir)) {
           const dirPath = path.join(DRAWINGS_DIR, dir);
           try {
-            // Delete all files in the directory
-            const files = fs.readdirSync(dirPath);
-            for (const file of files) {
-              fs.unlinkSync(path.join(dirPath, file));
-            }
-            // Delete the directory itself
-            fs.rmdirSync(dirPath);
+            fs.rmSync(dirPath, { recursive: true, force: true });
             result.deletedDrawingDirs++;
           } catch (error) {
             console.error(`Error deleting orphaned drawing directory ${dir}:`, error);
@@ -268,4 +266,50 @@ export function garbageCollect(state: GameState): GarbageCollectResult {
   }
 
   return result;
+}
+
+/**
+ * Migrate old flat drawing directory structure to layer subdirectories.
+ * Old format: data/drawings/{sceneId}/*.png
+ * New format: data/drawings/{sceneId}/dm/*.png
+ * Existing drawings are treated as DM layer content.
+ */
+export function migrateDrawingsToLayers(): void {
+  if (!fs.existsSync(DRAWINGS_DIR)) {
+    return;
+  }
+
+  try {
+    const sceneDirs = fs.readdirSync(DRAWINGS_DIR);
+    for (const sceneDir of sceneDirs) {
+      const scenePath = path.join(DRAWINGS_DIR, sceneDir);
+      if (!fs.statSync(scenePath).isDirectory()) continue;
+
+      // Check if there are .png files directly in the scene directory (old format)
+      const entries = fs.readdirSync(scenePath);
+      const pngFiles = entries.filter(f => f.endsWith('.png'));
+
+      if (pngFiles.length === 0) continue;
+
+      // Move them into dm/ subdirectory
+      const dmDir = path.join(scenePath, 'dm');
+      if (!fs.existsSync(dmDir)) {
+        fs.mkdirSync(dmDir, { recursive: true });
+      }
+
+      let migrated = 0;
+      for (const pngFile of pngFiles) {
+        const oldPath = path.join(scenePath, pngFile);
+        const newPath = path.join(dmDir, pngFile);
+        fs.renameSync(oldPath, newPath);
+        migrated++;
+      }
+
+      if (migrated > 0) {
+        console.log(`Migrated ${migrated} drawing chunks for scene ${sceneDir} to dm/ layer`);
+      }
+    }
+  } catch (error) {
+    console.error('Error during drawing migration:', error);
+  }
 }

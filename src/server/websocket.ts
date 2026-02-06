@@ -115,24 +115,26 @@ function handleMessage(message: WSMessage, sender: WebSocket): void {
 
     case 'draw:chunk':
       // Save chunk and broadcast to all clients
-      const chunkVersion = stateManager.updateDrawingChunk(message.sceneId, message.chunkKey, message.data);
+      const chunkVersion = stateManager.updateDrawingChunk(message.sceneId, message.layer, message.chunkKey, message.data);
       broadcast({ ...message, version: chunkVersion });
       break;
 
     case 'draw:sync-request':
-      // Send full drawing layer to requesting client
-      const drawingLayer = stateManager.getDrawingLayer(message.sceneId);
+      // Send full drawing layers to requesting client
+      const drawingLayers = stateManager.getDrawingLayers(message.sceneId);
       const syncResponse: WSMessage = {
         type: 'draw:sync',
         sceneId: message.sceneId,
-        chunks: drawingLayer.chunks,
-        version: drawingLayer.version,
+        dmChunks: drawingLayers.dm.chunks,
+        playerChunks: drawingLayers.player.chunks,
+        dmVersion: drawingLayers.dm.version,
+        playerVersion: drawingLayers.player.version,
       };
       sender.send(JSON.stringify(syncResponse));
       break;
 
     case 'draw:clear':
-      stateManager.clearDrawingLayer(message.sceneId);
+      stateManager.clearDrawingLayer(message.sceneId, message.layers);
       broadcast(message);
       break;
 

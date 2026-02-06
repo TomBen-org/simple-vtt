@@ -1,4 +1,4 @@
-import { WSMessage, GameState, Token, Measurement, Scene, DEFAULT_MAP_SETTINGS, DrawStroke, ChunkKey } from '../shared/types.js';
+import { WSMessage, GameState, Token, Measurement, Scene, DEFAULT_MAP_SETTINGS, DrawStroke, ChunkKey, DrawLayerType } from '../shared/types.js';
 
 type MessageHandler = (message: WSMessage) => void;
 
@@ -161,20 +161,20 @@ class WebSocketClient {
   }
 
   // Drawing methods
-  sendDrawStroke(sceneId: string, stroke: DrawStroke): void {
-    this.send({ type: 'draw:stroke', sceneId, stroke });
+  sendDrawStroke(sceneId: string, layer: DrawLayerType, stroke: DrawStroke): void {
+    this.send({ type: 'draw:stroke', sceneId, layer, stroke });
   }
 
-  sendDrawChunk(sceneId: string, chunkKey: ChunkKey, data: string, version: number = 0): void {
-    this.send({ type: 'draw:chunk', sceneId, chunkKey, data, version });
+  sendDrawChunk(sceneId: string, layer: DrawLayerType, chunkKey: ChunkKey, data: string, version: number = 0): void {
+    this.send({ type: 'draw:chunk', sceneId, layer, chunkKey, data, version });
   }
 
   requestDrawingSync(sceneId: string): void {
     this.send({ type: 'draw:sync-request', sceneId });
   }
 
-  clearDrawing(sceneId: string): void {
-    this.send({ type: 'draw:clear', sceneId });
+  clearDrawing(sceneId: string, layers: DrawLayerType[]): void {
+    this.send({ type: 'draw:clear', sceneId, layers });
   }
 
   moveTokenToScene(tokenId: string, targetSceneId: string): void {

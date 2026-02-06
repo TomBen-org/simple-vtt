@@ -29,7 +29,7 @@ Open http://localhost:3000 in your browser.
 - **Token Context Menu**: Right-click tokens to resize (1x1, 2x2, 3x3, 4x4 grid), duplicate, move to another scene, or delete
 - **Multiple Scenes**: Support for multiple scenes, each with its own map, tokens, and grid settings. All clients view the same active scene (shared view).
 - **Drag-and-Drop Tokens**: Drag image files (PNG, JPEG, GIF, WebP) onto the canvas to create tokens at the drop position. Multiple files are arranged in a grid pattern.
-- **Drawing Layer**: Paint/draw on a layer above the map but below tokens. Includes brush, eraser, shapes (line, rect, ellipse), and fill bucket tools. Drawings sync in real-time and persist per-scene.
+- **Drawing Layer**: Paint/draw on a layer above the map but below tokens. Includes brush, eraser, shapes (line, rect, ellipse), and fill bucket tools. Drawings sync in real-time and persist per-scene. Two separate layers: DM layer (below) and Player layer (above). Layer routing is automatic based on DM mode toggle. Erase affects own layer only. DM Clear All clears both layers; player Clear All clears player layer only. Draw tools available to all clients; opacity slider is DM-only. Draw section stays open when switching to regular tools.
 - **Touch Support**: Mobile-friendly interface with automatic detection. Touch devices get a simplified 5-button toolbar (Pan/Zoom, Line, Circle, Cone, Fullscreen) with pinch-to-zoom, one-finger pan, and long-press to drag tokens.
 - **Synchronized Token Dragging**: When dragging tokens, a ghost preview syncs in real-time to other connected players (purple dashed border, 50% opacity).
 - **Garbage Collection**: Server automatically cleans up orphaned uploads and drawing directories on startup.

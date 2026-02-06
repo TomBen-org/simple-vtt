@@ -1,4 +1,4 @@
-import { GameState, Token, Measurement, Scene, createDefaultGameState, DrawTool, DrawStroke, ChunkKey } from '../shared/types.js';
+import { GameState, Token, Measurement, Scene, createDefaultGameState, DrawTool, DrawStroke, ChunkKey, DrawLayerType } from '../shared/types.js';
 import { wsClient } from './websocket.js';
 import { initCanvas, render, loadBackground, getCanvas, getContext, resizeCanvas, clearBackground, DragDropState, RemoteTokenDrag } from './canvas.js';
 import { createToolState, setTool, startDrag, updateDrag, endDrag, Tool, ToolState, getCurrentMeasurement } from './tools.js';
@@ -94,11 +94,22 @@ let snapToGrid = true;
 // Drag and drop state for file uploads
 let dragDropState: DragDropState | null = null;
 
-// Drawing layer
-const drawingLayer = new DrawingLayer();
+// Drawing layers (DM and Player)
+const dmDrawingLayer = new DrawingLayer();
+const playerDrawingLayer = new DrawingLayer();
 let drawModeEnabled = false;
 let isDrawing = false;
 let lastToolBeforeDrawMode: Tool = 'move';
+
+function isDmMode(): boolean {
+  return document.getElementById('toolbar')?.classList.contains('dm-mode') ?? false;
+}
+function getActiveDrawingLayer(): DrawingLayer {
+  return isDmMode() ? dmDrawingLayer : playerDrawingLayer;
+}
+function getActiveLayerType(): DrawLayerType {
+  return isDmMode() ? 'dm' : 'player';
+}
 
 // Client-side drawing opacity (not synced)
 let drawingOpacity = 1.0;
@@ -157,17 +168,28 @@ function init(): void {
   setupFullscreenButton();
 
   // Set up drawing layer callbacks
-  drawingLayer.onStrokeUpdate = (stroke: DrawStroke) => {
+  dmDrawingLayer.onStrokeUpdate = (stroke: DrawStroke) => {
     const activeScene = getActiveScene();
     if (activeScene) {
-      wsClient.sendDrawStroke(activeScene.id, stroke);
+      wsClient.sendDrawStroke(activeScene.id, 'dm', stroke);
     }
   };
-
-  drawingLayer.onChunkUpdate = (chunkKey: ChunkKey, data: string) => {
+  dmDrawingLayer.onChunkUpdate = (chunkKey: ChunkKey, data: string) => {
     const activeScene = getActiveScene();
     if (activeScene) {
-      wsClient.sendDrawChunk(activeScene.id, chunkKey, data);
+      wsClient.sendDrawChunk(activeScene.id, 'dm', chunkKey, data);
+    }
+  };
+  playerDrawingLayer.onStrokeUpdate = (stroke: DrawStroke) => {
+    const activeScene = getActiveScene();
+    if (activeScene) {
+      wsClient.sendDrawStroke(activeScene.id, 'player', stroke);
+    }
+  };
+  playerDrawingLayer.onChunkUpdate = (chunkKey: ChunkKey, data: string) => {
+    const activeScene = getActiveScene();
+    if (activeScene) {
+      wsClient.sendDrawChunk(activeScene.id, 'player', chunkKey, data);
     }
   };
 
@@ -300,8 +322,9 @@ function init(): void {
         // Clear measurements on scene switch
         remoteMeasurements.clear();
         wsClient.clearMeasurement(playerId);
-        // Clear and reload drawing layer
-        drawingLayer.clear();
+        // Clear and reload drawing layers
+        dmDrawingLayer.clear();
+        playerDrawingLayer.clear();
         wsClient.requestDrawingSync(message.sceneId);
         const switchedScene = getActiveScene();
         if (switchedScene) {
@@ -327,30 +350,36 @@ function init(): void {
         break;
 
       case 'draw:stroke':
-        // Apply remote stroke for real-time preview
+        // Apply remote stroke for real-time preview to correct layer
         if (message.sceneId === gameState.activeSceneId) {
-          drawingLayer.applyRemoteStroke(message.stroke);
+          const targetLayer = message.layer === 'dm' ? dmDrawingLayer : playerDrawingLayer;
+          targetLayer.applyRemoteStroke(message.stroke);
         }
         break;
 
       case 'draw:chunk':
-        // Load updated chunk
+        // Load updated chunk to correct layer
         if (message.sceneId === gameState.activeSceneId) {
-          drawingLayer.loadChunk(message.chunkKey, message.data);
+          const targetLayer = message.layer === 'dm' ? dmDrawingLayer : playerDrawingLayer;
+          targetLayer.loadChunk(message.chunkKey, message.data);
         }
         break;
 
       case 'draw:sync':
-        // Load all chunks for the scene
+        // Load all chunks for the scene into both layers
         if (message.sceneId === gameState.activeSceneId) {
-          drawingLayer.loadAllChunks(message.chunks);
+          dmDrawingLayer.loadAllChunks(message.dmChunks);
+          playerDrawingLayer.loadAllChunks(message.playerChunks);
         }
         break;
 
       case 'draw:clear':
-        // Clear drawing layer
+        // Clear specified layers
         if (message.sceneId === gameState.activeSceneId) {
-          drawingLayer.clear();
+          for (const layer of message.layers) {
+            if (layer === 'dm') dmDrawingLayer.clear();
+            if (layer === 'player') playerDrawingLayer.clear();
+          }
         }
         break;
 
@@ -407,7 +436,7 @@ function init(): void {
       });
     }
 
-    render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds, dragDropState, drawingLayer, drawingOpacity, remoteTokenDrags);
+    render(gameState, toolState, selectedTokenId, viewState, remoteMeasurements, highlightedTokenIds, dragDropState, dmDrawingLayer, playerDrawingLayer, drawingOpacity, remoteTokenDrags);
     requestAnimationFrame(renderLoop);
   }
   renderLoop();
@@ -421,7 +450,7 @@ function setupEventHandlers(): void {
     lastToolBeforeDrawMode = tool;
     // Exit draw mode when selecting a regular tool
     drawModeEnabled = false;
-    drawingLayer.updateCursor(0, 0, false);
+    getActiveDrawingLayer().updateCursor(0, 0, false);
   });
 
   setOnMapUpload(async (file: File) => {
@@ -493,26 +522,33 @@ function setupEventHandlers(): void {
       setTool(toolState, lastToolBeforeDrawMode);
       setActiveTool(lastToolBeforeDrawMode);
       // Hide cursor preview
-      drawingLayer.updateCursor(0, 0, false);
+      getActiveDrawingLayer().updateCursor(0, 0, false);
     }
   });
 
   setOnDrawToolChange((tool: DrawTool) => {
-    drawingLayer.setBrush({ tool });
+    getActiveDrawingLayer().setBrush({ tool });
+    // Ensure draw mode is active and regular tools are deselected
+    drawModeEnabled = true;
+    document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
   });
 
   setOnDrawColorChange((color: string) => {
-    drawingLayer.setBrush({ color });
+    getActiveDrawingLayer().setBrush({ color });
   });
 
   setOnDrawBrushSizeChange((size: number) => {
-    drawingLayer.setBrush({ size });
+    getActiveDrawingLayer().setBrush({ size });
   });
 
   setOnDrawClear(() => {
     const activeScene = getActiveScene();
     if (activeScene) {
-      wsClient.clearDrawing(activeScene.id);
+      if (isDmMode()) {
+        wsClient.clearDrawing(activeScene.id, ['dm', 'player']);
+      } else {
+        wsClient.clearDrawing(activeScene.id, ['player']);
+      }
     }
   });
 
@@ -521,7 +557,7 @@ function setupEventHandlers(): void {
   });
 
   setOnEraseModeChange((enabled: boolean) => {
-    drawingLayer.setBrush({ eraseMode: enabled });
+    getActiveDrawingLayer().setBrush({ eraseMode: enabled });
   });
 }
 
@@ -646,10 +682,11 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
 
     // Drawing mode handling (desktop only)
     if (drawModeEnabled && !getIsMobileMode()) {
-      const brush = drawingLayer.getBrush();
+      const activeLayer = getActiveDrawingLayer();
+      const brush = activeLayer.getBrush();
       if (brush.tool === 'fill') {
         // Flood fill on click (async, fire-and-forget)
-        drawingLayer.floodFill(x, y).catch((err) => {
+        activeLayer.floodFill(x, y).catch((err) => {
           console.error('Flood fill error:', err);
         });
       } else if (brush.tool === 'picker') {
@@ -661,11 +698,11 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
         const b = pixelData[2];
         const hexColor = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
         setDrawColor(hexColor);
-        drawingLayer.setBrush({ color: hexColor });
+        activeLayer.setBrush({ color: hexColor });
       } else {
         // Start drawing stroke
         isDrawing = true;
-        drawingLayer.beginStroke(x, y);
+        activeLayer.beginStroke(x, y);
       }
       return;
     }
@@ -778,16 +815,17 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
 
     // Update drawing cursor position (desktop only)
     if (drawModeEnabled && !getIsMobileMode()) {
-      const brush = drawingLayer.getBrush();
+      const activeLayer = getActiveDrawingLayer();
+      const brush = activeLayer.getBrush();
       const showCursor = brush.tool === 'brush';
-      drawingLayer.updateCursor(x, y, showCursor);
+      activeLayer.updateCursor(x, y, showCursor);
     } else {
-      drawingLayer.updateCursor(0, 0, false);
+      getActiveDrawingLayer().updateCursor(0, 0, false);
     }
 
     // Drawing mode handling (desktop only)
     if (drawModeEnabled && isDrawing && !getIsMobileMode()) {
-      drawingLayer.continueStroke(x, y);
+      getActiveDrawingLayer().continueStroke(x, y);
       return;
     }
 
@@ -871,7 +909,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
     // Drawing mode handling (desktop only)
     if (drawModeEnabled && isDrawing && !getIsMobileMode()) {
       isDrawing = false;
-      drawingLayer.endStroke();
+      getActiveDrawingLayer().endStroke();
       return;
     }
 
@@ -979,7 +1017,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
 
   // Hide drawing cursor when leaving canvas
   canvas.addEventListener('pointerleave', () => {
-    drawingLayer.updateCursor(0, 0, false);
+    getActiveDrawingLayer().updateCursor(0, 0, false);
   });
 
   // Track Ctrl key for snap override

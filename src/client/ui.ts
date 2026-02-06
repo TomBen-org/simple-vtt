@@ -350,21 +350,6 @@ export function setActiveTool(tool: Tool): void {
       btn.classList.add('active');
     }
   });
-
-  // Close draw section when selecting a regular tool
-  const drawSection = document.getElementById('draw-section');
-  if (drawSection && !drawSection.classList.contains('collapsed')) {
-    drawSection.classList.add('collapsed');
-    // Update localStorage
-    try {
-      const state = loadSectionState();
-      state.draw = false;
-      saveSectionState(state);
-    } catch (e) {}
-    if (onDrawModeChange) {
-      onDrawModeChange(false);
-    }
-  }
 }
 
 export function setActiveDrawTool(tool: DrawTool): void {
