@@ -2,6 +2,7 @@ import { Tool } from './tools.js';
 import { MapSettings, Scene, DrawTool } from '../shared/types.js';
 
 const TOOLBAR_SECTIONS_KEY = 'simple-vtt-toolbar-sections';
+const DM_MODE_KEY = 'simple-vtt-dm-mode';
 
 interface ToolbarSectionState {
   tools: boolean;
@@ -115,6 +116,26 @@ export function initUI(): void {
       });
       saveSectionState(sectionState);
       if (onDrawModeChange) onDrawModeChange(false);
+    });
+  }
+
+  // DM mode toggle
+  const toolbar = document.getElementById('toolbar');
+  const dmModeBtn = document.getElementById('dm-mode-btn');
+  if (toolbar && dmModeBtn) {
+    // Load saved DM mode state
+    const savedDmMode = localStorage.getItem(DM_MODE_KEY);
+    const isDmMode = savedDmMode === 'true';
+    toolbar.classList.toggle('dm-mode', isDmMode);
+    dmModeBtn.classList.toggle('active', isDmMode);
+
+    dmModeBtn.addEventListener('click', () => {
+      const isNowDmMode = !toolbar.classList.contains('dm-mode');
+      toolbar.classList.toggle('dm-mode', isNowDmMode);
+      dmModeBtn.classList.toggle('active', isNowDmMode);
+      try {
+        localStorage.setItem(DM_MODE_KEY, String(isNowDmMode));
+      } catch (e) {}
     });
   }
 
