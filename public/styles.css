@@ -127,9 +127,9 @@ body {
 /* Toggle switch button (like a light switch) */
 .toggle-switch {
   position: relative;
-  width: 52px;
+  width: 40px;
   height: 32px;
-  padding: 4px;
+  padding: 0;
   border: 1px solid #444;
   border-radius: 4px;
   background: #2a2a3e;
@@ -137,7 +137,7 @@ body {
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -147,32 +147,33 @@ body {
 }
 .toggle-switch .toggle-slider {
   position: absolute;
-  left: 3px;
-  top: 3px;
-  bottom: 3px;
+  left: 2px;
+  top: 2px;
+  bottom: 2px;
   width: 22px;
   background: #555;
   border-radius: 2px;
   transition: left 0.15s ease, background 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .toggle-switch.active .toggle-slider {
-  left: calc(100% - 25px);
+  left: calc(100% - 24px);
   background: #7a7aae;
 }
-.toggle-switch svg {
-  width: 16px;
-  height: 16px;
-  z-index: 1;
-  margin-right: 2px;
+.toggle-switch .toggle-slider svg {
+  width: 14px;
+  height: 14px;
+  color: #aaa;
   transition: color 0.15s ease;
+}
+.toggle-switch.active .toggle-slider svg {
+  color: #fff;
 }
 .toggle-switch.active {
   background: #4a4a6e;
   border-color: #6a6a8e;
-  color: #fff;
-}
-.toggle-switch.active svg {
-  color: #fff;
 }
 
 /* Icon buttons (square buttons with SVG icons) */
@@ -374,12 +375,6 @@ label {
 }
 
 /* Grid Controls */
-.grid-btn {
-  padding: 4px 8px;
-  min-width: 24px;
-  font-size: 14px;
-  font-weight: bold;
-}
 
 .grid-control {
   display: flex;

@@ -26,19 +26,6 @@
             <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>
           </svg>
         </button>
-        <button class="toggle-switch active" id="snap-toggle" title="Snap to Grid">
-          <span class="toggle-slider"></span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z"/>
-            <path d="M12 3v18M3 12h18"/>
-          </svg>
-        </button>
-        <button class="toggle-switch active" id="grid-toggle" title="Toggle Grid">
-          <span class="toggle-slider"></span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/>
-          </svg>
-        </button>
         <button class="tool-btn icon-btn" data-tool="line" title="Measure Line">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="4" y1="20" x2="20" y2="4"/>
@@ -56,6 +43,21 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 4L4 20L20 20Z"/>
           </svg>
+        </button>
+        <button class="toggle-switch active" id="snap-toggle" title="Snap to Grid">
+          <span class="toggle-slider">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z"/>
+              <path d="M12 3v18M3 12h18"/>
+            </svg>
+          </span>
+        </button>
+        <button class="toggle-switch active" id="grid-toggle" title="Toggle Grid">
+          <span class="toggle-slider">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/>
+            </svg>
+          </span>
         </button>
       </div>
     </div>
@@ -109,21 +111,15 @@
       <div class="section-content">
         <label class="grid-control">
           Size:
-          <button class="grid-btn" id="grid-size-dec">−</button>
           <input type="number" id="grid-size" value="50" min="1" max="500" step="any">
-          <button class="grid-btn" id="grid-size-inc">+</button>
         </label>
         <label class="grid-control">
           X:
-          <button class="grid-btn" id="grid-offset-x-dec">−</button>
           <input type="number" id="grid-offset-x" value="0" step="any">
-          <button class="grid-btn" id="grid-offset-x-inc">+</button>
         </label>
         <label class="grid-control">
           Y:
-          <button class="grid-btn" id="grid-offset-y-dec">−</button>
           <input type="number" id="grid-offset-y" value="0" step="any">
-          <button class="grid-btn" id="grid-offset-y-inc">+</button>
         </label>
         <button class="tool-btn" data-tool="grid-align" title="Align Grid (draw over one cell)">Align</button>
       </div>
@@ -172,11 +168,12 @@
         </button>
         <input type="color" id="draw-color" value="#ff0000" title="Draw Color">
         <button class="toggle-switch" id="erase-mode-toggle" title="Erase Mode">
-          <span class="toggle-slider"></span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 20H7L3 16a1 1 0 010-1.4l9.9-9.9a1 1 0 011.4 0l5.7 5.7a1 1 0 010 1.4L11.2 20"/>
-            <path d="M6 11l7 7"/>
-          </svg>
+          <span class="toggle-slider">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 20H7L3 16a1 1 0 010-1.4l9.9-9.9a1 1 0 011.4 0l5.7 5.7a1 1 0 010 1.4L11.2 20"/>
+              <path d="M6 11l7 7"/>
+            </svg>
+          </span>
         </button>
         <label class="brush-size-label">
           Size:
@@ -195,12 +192,13 @@
     <div class="toolbar-spacer"></div>
 
     <button class="toggle-switch" id="dm-mode-btn" title="Toggle DM Mode">
-      <span class="toggle-slider"></span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="8" r="5"/>
-        <path d="M3 21v-2a7 7 0 017-7h4a7 7 0 017 7v2"/>
-        <path d="M12 11v4M10 13h4"/>
-      </svg>
+      <span class="toggle-slider">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="5"/>
+          <path d="M3 21v-2a7 7 0 017-7h4a7 7 0 017 7v2"/>
+          <path d="M12 11v4M10 13h4"/>
+        </svg>
+      </span>
     </button>
   </div>
 

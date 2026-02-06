@@ -205,55 +205,6 @@ export function initUI(): void {
     gridOffsetYInput.addEventListener('change', triggerGridChange);
   }
 
-  // Grid size +/- buttons
-  const gridSizeInc = document.getElementById('grid-size-inc');
-  const gridSizeDec = document.getElementById('grid-size-dec');
-  if (gridSizeInc && gridSizeInput) {
-    gridSizeInc.addEventListener('click', () => {
-      gridSizeInput.value = String((parseFloat(gridSizeInput.value) || 50) + 1);
-      triggerGridChange();
-    });
-  }
-  if (gridSizeDec && gridSizeInput) {
-    gridSizeDec.addEventListener('click', () => {
-      const newValue = (parseFloat(gridSizeInput.value) || 50) - 1;
-      gridSizeInput.value = String(Math.max(1, newValue));
-      triggerGridChange();
-    });
-  }
-
-  // Grid offset X +/- buttons
-  const gridOffsetXInc = document.getElementById('grid-offset-x-inc');
-  const gridOffsetXDec = document.getElementById('grid-offset-x-dec');
-  if (gridOffsetXInc && gridOffsetXInput) {
-    gridOffsetXInc.addEventListener('click', () => {
-      gridOffsetXInput.value = String((parseFloat(gridOffsetXInput.value) || 0) + 1);
-      triggerGridChange();
-    });
-  }
-  if (gridOffsetXDec && gridOffsetXInput) {
-    gridOffsetXDec.addEventListener('click', () => {
-      gridOffsetXInput.value = String((parseFloat(gridOffsetXInput.value) || 0) - 1);
-      triggerGridChange();
-    });
-  }
-
-  // Grid offset Y +/- buttons
-  const gridOffsetYInc = document.getElementById('grid-offset-y-inc');
-  const gridOffsetYDec = document.getElementById('grid-offset-y-dec');
-  if (gridOffsetYInc && gridOffsetYInput) {
-    gridOffsetYInc.addEventListener('click', () => {
-      gridOffsetYInput.value = String((parseFloat(gridOffsetYInput.value) || 0) + 1);
-      triggerGridChange();
-    });
-  }
-  if (gridOffsetYDec && gridOffsetYInput) {
-    gridOffsetYDec.addEventListener('click', () => {
-      gridOffsetYInput.value = String((parseFloat(gridOffsetYInput.value) || 0) - 1);
-      triggerGridChange();
-    });
-  }
-
   const snapToggle = document.getElementById('snap-toggle') as HTMLButtonElement;
   if (snapToggle) {
     snapToggle.addEventListener('click', () => {
