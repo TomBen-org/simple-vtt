@@ -19,8 +19,8 @@ Open http://localhost:3000 in your browser.
 - **Maps**: Upload background map images
 - **Grid**: Optional grid overlay with configurable size and offset
 - **Grid Alignment Tool**: Draw a box over multiple map cells, then enter the cell count to auto-configure grid size and alignment
-- **Snap to Grid**: Toggle snap-to-grid for token movement (Ctrl temporarily inverts the setting)
-- **Measurement Tools**: Line, circle, and cone measurement tools (1 grid cell = 5 feet)
+- **Snap to Grid**: Toggle snap-to-grid for token movement and measurement tool start/end points (Ctrl temporarily inverts the setting)
+- **Measurement Tools**: Line, circle, cone, and cube measurement tools (1 grid cell = 5 feet). Measurements snap to grid intersections and cell centers when snap-to-grid is enabled.
 - **Synchronized Measurements**: Measurements sync in real-time to all connected players (purple for remote, yellow for local)
 - **Token Highlighting**: Tokens touched by any measurement glow orange
 - **Real-time Sync**: All changes sync instantly across connected browsers via WebSocket
@@ -30,7 +30,7 @@ Open http://localhost:3000 in your browser.
 - **Multiple Scenes**: Support for multiple scenes, each with its own map, tokens, and grid settings. All clients view the same active scene (shared view).
 - **Drag-and-Drop Tokens**: Drag image files (PNG, JPEG, GIF, WebP) onto the canvas to create tokens at the drop position. Multiple files are arranged in a grid pattern.
 - **Drawing Layer**: Paint/draw on a layer above the map but below tokens. Includes brush, eraser, shapes (line, rect, ellipse), and fill bucket tools. Drawings sync in real-time and persist per-scene. Two separate layers: DM layer (below) and Player layer (above). Layer routing is automatic based on DM mode toggle. Erase affects own layer only. DM Clear All clears both layers; player Clear All clears player layer only. Draw tools available to all clients; opacity slider is DM-only. Draw section stays open when switching to regular tools.
-- **Touch Support**: Mobile-friendly interface with automatic detection. Touch devices get a simplified 5-button toolbar (Pan/Zoom, Line, Circle, Cone, Fullscreen) with pinch-to-zoom, one-finger pan, and long-press to drag tokens.
+- **Touch Support**: Mobile-friendly interface with automatic detection. Touch devices get a simplified 6-button toolbar (Pan/Zoom, Line, Circle, Cone, Cube, Fullscreen) with pinch-to-zoom, one-finger pan, and long-press to drag tokens.
 - **Synchronized Token Dragging**: When dragging tokens, a ghost preview syncs in real-time to other connected players (purple dashed border, 50% opacity).
 - **Garbage Collection**: Server automatically cleans up orphaned uploads and drawing directories on startup.
 
@@ -66,7 +66,8 @@ The server maintains authoritative game state. All client actions are sent to th
 2. **Measure Line** - Click and drag to measure distances
 3. **Measure Circle** - Click center, drag for radius
 4. **Measure Cone** - Click origin, drag for 60-degree cone
-5. **Align** - In the Grid settings panel. Draw a box over multiple grid cells, then enter the cell count along the longest side. Uses the starting corner for offset alignment.
+5. **Measure Cube** - Click corner, drag to create a square area (side = max of dx/dy, green fill)
+6. **Align** - In the Grid settings panel. Draw a box over multiple grid cells, then enter the cell count along the longest side. Uses the starting corner for offset alignment.
 
 ## Draw Mode
 
@@ -86,7 +87,7 @@ Toggle Draw Mode button to reveal drawing tools. When enabled, mouse events draw
 ## Configuration
 
 - **Grid section** (collapsible): Toggle visibility, configure size and offset (X/Y) with +/- buttons or direct input. Supports floating-point values.
-- **Snap toggle**: Next to the Move tool. Ctrl key temporarily inverts the setting. This is a client-side only setting (not synced).
+- **Snap toggle**: Next to the Move tool. Ctrl key temporarily inverts the setting. This is a client-side only setting (not synced). Affects both token movement (full grid snap) and measurement tools (half-grid snap to intersections and cell centers).
 - **Scene selector**: Dropdown to switch between scenes, with buttons to add (+), rename, and delete scenes. When uploading a map, you can choose to create a new scene or replace the current background.
 - Distance is always 5 feet per grid cell
 
@@ -95,10 +96,10 @@ Toggle Draw Mode button to reveal drawing tools. When enabled, mouse events draw
 The app automatically detects touch input and switches to a mobile-optimized UI:
 
 - **Automatic detection**: Uses `(pointer: coarse)` media query on load, then dynamically switches based on actual input type (touch vs mouse)
-- **Mobile toolbar**: 5 large (50px) buttons with SVG icons: Pan/Zoom, Line, Circle, Cone, Fullscreen
+- **Mobile toolbar**: 6 large (50px) buttons with SVG icons: Pan/Zoom, Line, Circle, Cone, Cube, Fullscreen
 - **Pan/Zoom mode**: One-finger drag to pan, pinch with two fingers to zoom. Long-press on a token to start dragging it.
 - **Token dragging**: In pan-zoom mode, long-press on a token to drag it. Returns to pan-zoom mode when released.
-- **Measurement tools**: Touch and drag to measure with line, circle, or cone
+- **Measurement tools**: Touch and drag to measure with line, circle, cone, or cube
 - **Fullscreen button**: Toggle fullscreen mode for immersive play
 - **Landscape layout**: In landscape orientation, toolbar moves to left side vertically
 - **No context menu**: Right-click context menu is disabled on mobile

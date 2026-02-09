@@ -112,6 +112,12 @@ function getActiveLayerType(): DrawLayerType {
   return isDmMode() ? 'dm' : 'player';
 }
 
+// Snap a measurement point to half-grid intervals (grid intersections and cell centers)
+function snapMeasurementPoint(pos: number, gridSize: number, offset: number): number {
+  const halfGrid = gridSize / 2;
+  return Math.round((pos - offset) / halfGrid) * halfGrid + offset;
+}
+
 // Client-side drawing opacity (not synced)
 let drawingOpacity = 1.0;
 
@@ -420,7 +426,7 @@ function init(): void {
         const measurement: Measurement = {
           id: 'local',
           playerId: playerId,
-          tool: localMeasurement.tool as 'line' | 'circle' | 'cone',
+          tool: localMeasurement.tool as 'line' | 'circle' | 'cone' | 'cube',
           startX: localMeasurement.startX,
           startY: localMeasurement.startY,
           endX: localMeasurement.endX,
@@ -767,8 +773,23 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
         }
       }
     } else {
-      // Measurement tools (line, circle, cone, grid-align)
-      startDrag(toolState, x, y);
+      // Measurement tools (line, circle, cone, cube, grid-align)
+      let sx = x;
+      let sy = y;
+      if (toolState.currentTool !== 'grid-align') {
+        const activeSceneSnap = getActiveScene();
+        if (activeSceneSnap) {
+          const shouldSnap = ctrlKeyPressed ? !snapToGrid : snapToGrid;
+          if (shouldSnap) {
+            const gs = activeSceneSnap.map.gridSize;
+            const ox = activeSceneSnap.map.gridOffsetX || 0;
+            const oy = activeSceneSnap.map.gridOffsetY || 0;
+            sx = snapMeasurementPoint(x, gs, ox);
+            sy = snapMeasurementPoint(y, gs, oy);
+          }
+        }
+      }
+      startDrag(toolState, sx, sy);
     }
   });
 
@@ -875,7 +896,22 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
           }
         }
       } else if (toolState.currentTool !== 'pan-zoom') {
-        updateDrag(toolState, x, y);
+        let mx = x;
+        let my = y;
+        if (toolState.currentTool !== 'grid-align') {
+          const activeSceneSnap = getActiveScene();
+          if (activeSceneSnap) {
+            const shouldSnap = ctrlKeyPressed ? !snapToGrid : snapToGrid;
+            if (shouldSnap) {
+              const gs = activeSceneSnap.map.gridSize;
+              const ox = activeSceneSnap.map.gridOffsetX || 0;
+              const oy = activeSceneSnap.map.gridOffsetY || 0;
+              mx = snapMeasurementPoint(x, gs, ox);
+              my = snapMeasurementPoint(y, gs, oy);
+            }
+          }
+        }
+        updateDrag(toolState, mx, my);
 
         // Send measurement update to other players (throttled)
         if (toolState.currentTool !== 'move' && toolState.currentTool !== 'grid-align') {
@@ -885,7 +921,7 @@ function setupCanvasEvents(canvas: HTMLCanvasElement): void {
             const measurement: Measurement = {
               id: generateUUID(),
               playerId: playerId,
-              tool: toolState.currentTool as 'line' | 'circle' | 'cone',
+              tool: toolState.currentTool as 'line' | 'circle' | 'cone' | 'cube',
               startX: toolState.startX,
               startY: toolState.startY,
               endX: toolState.endX,

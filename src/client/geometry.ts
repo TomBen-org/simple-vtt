@@ -155,6 +155,15 @@ function pointInCone(
   return Math.abs(angleDiff) <= halfAngle;
 }
 
+export function rectIntersectsRect(rect1: Rect, rect2: Rect): boolean {
+  return (
+    rect1.x < rect2.x + rect2.width &&
+    rect1.x + rect1.width > rect2.x &&
+    rect1.y < rect2.y + rect2.height &&
+    rect1.y + rect1.height > rect2.y
+  );
+}
+
 export function getTokensInMeasurement(
   measurement: Measurement,
   tokens: Token[],
@@ -207,6 +216,19 @@ export function getTokensInMeasurement(
           coneAngle,
           rect
         );
+        break;
+
+      case 'cube':
+        const cdx = measurement.endX - measurement.startX;
+        const cdy = measurement.endY - measurement.startY;
+        const side = Math.max(Math.abs(cdx), Math.abs(cdy));
+        const cubeRect: Rect = {
+          x: cdx >= 0 ? measurement.startX : measurement.startX - side,
+          y: cdy >= 0 ? measurement.startY : measurement.startY - side,
+          width: side,
+          height: side,
+        };
+        intersects = rectIntersectsRect(cubeRect, rect);
         break;
     }
 

@@ -400,6 +400,26 @@ function drawMeasurement(map: MapSettings, toolState: ToolState, viewState: View
     const coneCenterX = startX + dx * 0.5;
     const coneCenterY = startY + dy * 0.5;
     drawDistanceLabel(coneCenterX, coneCenterY, feet, 'length', zoom);
+  } else if (tool === 'cube') {
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const side = Math.max(Math.abs(dx), Math.abs(dy));
+    // Square extends in the direction of the drag from the start corner
+    const rectX = dx >= 0 ? startX : startX - side;
+    const rectY = dy >= 0 ? startY : startY - side;
+
+    ctx.strokeStyle = 'rgba(0, 200, 100, 0.8)';
+    ctx.fillStyle = 'rgba(0, 200, 100, 0.2)';
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    ctx.rect(rectX, rectY, side, side);
+    ctx.fill();
+    ctx.stroke();
+
+    const feet = (side / gridSize) * feetPerCell;
+    const centerX = rectX + side / 2;
+    const centerY = rectY + side / 2;
+    drawDistanceLabel(centerX, centerY, feet, 'side', zoom);
   } else if (tool === 'grid-align') {
     // Draw grid alignment preview box
     const minX = Math.min(startX, endX);
@@ -515,6 +535,25 @@ function drawRemoteMeasurement(map: MapSettings, measurement: Measurement, viewS
     const coneCenterX = startX + dx * 0.5;
     const coneCenterY = startY + dy * 0.5;
     drawRemoteDistanceLabel(coneCenterX, coneCenterY, feet, 'length', zoom);
+  } else if (tool === 'cube') {
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const side = Math.max(Math.abs(dx), Math.abs(dy));
+    const rectX = dx >= 0 ? startX : startX - side;
+    const rectY = dy >= 0 ? startY : startY - side;
+
+    ctx.strokeStyle = 'rgba(168, 85, 247, 0.8)';
+    ctx.fillStyle = 'rgba(168, 85, 247, 0.2)';
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    ctx.rect(rectX, rectY, side, side);
+    ctx.fill();
+    ctx.stroke();
+
+    const feet = (side / gridSize) * feetPerCell;
+    const centerX = rectX + side / 2;
+    const centerY = rectY + side / 2;
+    drawRemoteDistanceLabel(centerX, centerY, feet, 'side', zoom);
   }
 
   ctx.restore();

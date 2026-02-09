@@ -81,7 +81,7 @@ export interface GameState {
 export interface Measurement {
   id: string;
   playerId: string;
-  tool: 'line' | 'circle' | 'cone';
+  tool: 'line' | 'circle' | 'cone' | 'cube';
   startX: number;
   startY: number;
   endX: number;
