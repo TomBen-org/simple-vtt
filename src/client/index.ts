@@ -205,6 +205,11 @@ function init(): void {
       case 'sync':
         gameState = message.state;
         setBackgroundReady(false);
+        // Clear ephemeral local state — any in-progress interactions are lost on reconnect
+        selectedTokenId = null;
+        draggedToken = null;
+        remoteMeasurements.clear();
+        remoteTokenDrags.clear();
         const syncScene = getActiveScene();
         if (syncScene) {
           updateUIFromState(syncScene.map);
