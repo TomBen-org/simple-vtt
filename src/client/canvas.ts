@@ -26,6 +26,9 @@ let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 let backgroundMipmaps: HTMLCanvasElement[] | null = null;
 let currentDpr = window.devicePixelRatio || 1;
+// Suppresses background rendering until drawing sync is received, preventing
+// a flash of the unobscured map before the drawing layer (used for fog of war) loads.
+let backgroundReady = true;
 
 export function initCanvas(canvasElement: HTMLCanvasElement): void {
   canvas = canvasElement;
@@ -108,6 +111,10 @@ export function clearBackground(): void {
   backgroundMipmaps = null;
 }
 
+export function setBackgroundReady(ready: boolean): void {
+  backgroundReady = ready;
+}
+
 export function render(
   state: GameState,
   toolState: ToolState,
@@ -125,6 +132,20 @@ export function render(
 
   ctx.fillStyle = '#1a1a2e';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (!backgroundReady) {
+    const cssWidth = canvas.width / currentDpr;
+    const cssHeight = canvas.height / currentDpr;
+    ctx.save();
+    ctx.scale(currentDpr, currentDpr);
+    ctx.font = 'bold 16px Arial';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Loading...', cssWidth / 2, cssHeight / 2);
+    ctx.restore();
+    return;
+  }
 
   // Get active scene
   const activeScene = state.scenes.find(s => s.id === state.activeSceneId);

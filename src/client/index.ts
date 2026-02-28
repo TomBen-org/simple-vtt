@@ -1,6 +1,6 @@
 import { GameState, Token, Measurement, Scene, createDefaultGameState, DrawTool, DrawStroke, ChunkKey, DrawLayerType } from '../shared/types.js';
 import { wsClient } from './websocket.js';
-import { initCanvas, render, loadBackground, getCanvas, getContext, resizeCanvas, clearBackground, DragDropState, RemoteTokenDrag } from './canvas.js';
+import { initCanvas, render, loadBackground, getCanvas, getContext, resizeCanvas, clearBackground, setBackgroundReady, DragDropState, RemoteTokenDrag } from './canvas.js';
 import { createToolState, setTool, startDrag, updateDrag, endDrag, Tool, ToolState, getCurrentMeasurement } from './tools.js';
 import { findTokenAtPoint, uploadImage, loadTokenImage } from './tokens.js';
 import {
@@ -204,6 +204,7 @@ function init(): void {
     switch (message.type) {
       case 'sync':
         gameState = message.state;
+        setBackgroundReady(false);
         const syncScene = getActiveScene();
         if (syncScene) {
           updateUIFromState(syncScene.map);
@@ -326,6 +327,7 @@ function init(): void {
 
       case 'scene:switch':
         gameState.activeSceneId = message.sceneId;
+        setBackgroundReady(false);
         // Clear measurements on scene switch
         remoteMeasurements.clear();
         wsClient.clearMeasurement(playerId);
@@ -377,6 +379,7 @@ function init(): void {
         if (message.sceneId === gameState.activeSceneId) {
           dmDrawingLayer.loadAllChunks(message.dmChunks);
           playerDrawingLayer.loadAllChunks(message.playerChunks);
+          setBackgroundReady(true);
         }
         break;
 
