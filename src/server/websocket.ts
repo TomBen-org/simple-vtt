@@ -11,8 +11,26 @@ export function setupWebSocket(server: WebSocketServer): void {
     console.error('WebSocket server error:', error);
   });
 
-  wss.on('connection', (ws: WebSocket, req) => {
+  // Ping all clients every 10 seconds to keep connections alive through proxies
+  const pingInterval = setInterval(() => {
+    wss.clients.forEach((ws: WebSocket & { isAlive?: boolean }) => {
+      if (ws.isAlive === false) {
+        ws.terminate();
+        return;
+      }
+      ws.isAlive = false;
+      ws.ping();
+    });
+  }, 10000);
+
+  wss.on('close', () => {
+    clearInterval(pingInterval);
+  });
+
+  wss.on('connection', (ws: WebSocket & { isAlive?: boolean }, req) => {
     console.log('Client connected from', req.socket.remoteAddress);
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
 
     const syncMessage: WSMessage = {
       type: 'sync',
