@@ -1,4 +1,4 @@
-import { GameState, Token, Scene, DEFAULT_MAP_SETTINGS, generateId, ChunkKey, DrawingLayer, DrawLayerType } from '../shared/types';
+import { GameState, Token, Scene, DEFAULT_MAP_SETTINGS, generateId, indexToLabel, ChunkKey, DrawingLayer, DrawLayerType } from '../shared/types';
 import { loadState, saveState, saveChunk, loadAllChunks, clearSceneDrawing, deleteChunk } from './persistence';
 
 class StateManager {
@@ -80,6 +80,9 @@ class StateManager {
   addToken(token: Token): void {
     const scene = this.getActiveScene();
     if (scene) {
+      const index = scene.nextLabelIndex ?? 0;
+      token.label = indexToLabel(index);
+      scene.nextLabelIndex = index + 1;
       scene.tokens.push(token);
       this.persist();
     }

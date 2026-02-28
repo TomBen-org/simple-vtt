@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { GameState, Scene, DEFAULT_MAP_SETTINGS, generateId, createDefaultGameState, ChunkKey, DrawingLayer, DrawLayerType } from '../shared/types';
+import { GameState, Scene, DEFAULT_MAP_SETTINGS, generateId, indexToLabel, createDefaultGameState, ChunkKey, DrawingLayer, DrawLayerType } from '../shared/types';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
@@ -61,6 +61,21 @@ function migrateState(parsed: any): GameState {
   };
 }
 
+// Assigns labels to any tokens that don't already have one, starting from
+// each scene's nextLabelIndex counter (which is never decremented on delete).
+function migrateTokenLabels(state: GameState): void {
+  for (const scene of state.scenes) {
+    let index = scene.nextLabelIndex ?? 0;
+    for (const token of scene.tokens) {
+      if (!token.label) {
+        token.label = indexToLabel(index);
+        index++;
+      }
+    }
+    scene.nextLabelIndex = index;
+  }
+}
+
 export function loadState(): GameState {
   ensureDataDir();
 
@@ -71,7 +86,9 @@ export function loadState(): GameState {
   try {
     const data = fs.readFileSync(STATE_FILE, 'utf-8');
     const parsed = JSON.parse(data);
-    return migrateState(parsed);
+    const state = migrateState(parsed);
+    migrateTokenLabels(state);
+    return state;
   } catch (error) {
     console.error('Error loading state:', error);
     return createDefaultGameState();

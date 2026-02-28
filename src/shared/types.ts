@@ -6,6 +6,7 @@ export interface Token {
   gridWidth: number;   // Size in grid cells (e.g., 1 for 1x1, 2 for 2x2)
   gridHeight: number;
   name?: string;
+  label?: string;      // Unique letter ID assigned on creation (A, B, ... Z, AA, AB, ...)
 }
 
 // Drawing layer types
@@ -71,6 +72,7 @@ export interface Scene {
   tokens: Token[];
   map: MapSettings;
   drawing?: DrawingLayer;
+  nextLabelIndex?: number;  // Counter for token label assignment; never decremented
 }
 
 export interface GameState {
@@ -118,6 +120,16 @@ export const DEFAULT_MAP_SETTINGS: MapSettings = {
   gridOffsetX: 0,
   gridOffsetY: 0,
 };
+
+// Converts a 0-based index to a token label: 0→A, 1→B, ..., 25→Z, 26→AA, 27→AB, ...
+export function indexToLabel(n: number): string {
+  let label = '';
+  do {
+    label = String.fromCharCode(65 + (n % 26)) + label;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return label;
+}
 
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);

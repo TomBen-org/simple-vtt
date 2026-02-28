@@ -296,6 +296,27 @@ function drawToken(token: Token, selected: boolean, highlighted: boolean, gridSi
     ctx.lineWidth = 3;
     ctx.strokeRect(token.x - 2, token.y - 2, width + 4, height + 4);
   }
+
+  // Draw token label (scales with zoom since it's drawn in world coordinates)
+  if (token.label) {
+    const fontSize = gridSize * 0.3;
+    ctx.font = `bold ${fontSize}px Arial`;
+    const textWidth = ctx.measureText(token.label).width;
+    const pad = fontSize * 0.2;
+    const bgW = textWidth + pad * 2;
+    const bgH = fontSize + pad * 2;
+    // Straddle the top-right corner, half inside and half outside the token
+    const bgX = token.x + width - bgW / 2;
+    const bgY = token.y - bgH / 2;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(bgX, bgY, bgW, bgH);
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(token.label, bgX + pad, bgY + pad);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+  }
 }
 
 function drawGhostToken(token: Token, x: number, y: number, startX: number, startY: number, gridSize: number, viewState: ViewState): void {
