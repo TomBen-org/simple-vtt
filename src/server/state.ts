@@ -1,4 +1,4 @@
-import { GameState, Token, Scene, DEFAULT_MAP_SETTINGS, generateId, indexToLabel, ChunkKey, DrawingLayer, DrawLayerType } from '../shared/types';
+import { GameState, Token, Scene, DEFAULT_MAP_SETTINGS, generateId, indexToLabel, ChunkKey, DrawingLayer, DrawLayerType, InitiativeZone } from '../shared/types';
 import { loadState, saveState, saveChunk, loadAllChunks, clearSceneDrawing, deleteChunk } from './persistence';
 
 class StateManager {
@@ -109,6 +109,12 @@ class StateManager {
     const index = scene.tokens.findIndex(t => t.id === id);
     if (index !== -1) {
       scene.tokens.splice(index, 1);
+      // Also remove from initiative tracker
+      if (scene.initiative) {
+        for (const zone of scene.initiative.zones) {
+          zone.entries = zone.entries.filter(e => e.tokenId !== id);
+        }
+      }
       this.persist();
       return true;
     }
@@ -170,6 +176,61 @@ class StateManager {
     if (offsetY !== undefined) {
       scene.map.gridOffsetY = offsetY;
     }
+    this.persist();
+  }
+
+  // Initiative tracker methods (operate on active scene)
+  private getActiveInitiativeZones(): InitiativeZone[] {
+    const scene = this.getActiveScene();
+    if (!scene) return [];
+    if (!scene.initiative) scene.initiative = { zones: [] };
+    return scene.initiative.zones;
+  }
+
+  getInitiativeZones(): InitiativeZone[] {
+    return this.getActiveInitiativeZones();
+  }
+
+  addInitiativeZone(title: string): InitiativeZone {
+    const zones = this.getActiveInitiativeZones();
+    const zone: InitiativeZone = { id: generateId(), title, entries: [] };
+    zones.push(zone);
+    this.persist();
+    return zone;
+  }
+
+  removeInitiativeZone(zoneId: string): void {
+    const scene = this.getActiveScene();
+    if (!scene?.initiative) return;
+    scene.initiative.zones = scene.initiative.zones.filter(z => z.id !== zoneId);
+    this.persist();
+  }
+
+  addTokenToInitiative(tokenId: string): void {
+    const zones = this.getActiveInitiativeZones();
+    // No-op if already present in any zone
+    if (zones.some(z => z.entries.some(e => e.tokenId === tokenId))) return;
+    // Auto-create a default zone if none exist
+    if (zones.length === 0) {
+      zones.push({ id: generateId(), title: 'Initiative', entries: [] });
+    }
+    zones[0].entries.push({ tokenId });
+    this.persist();
+  }
+
+  removeTokenFromInitiative(tokenId: string): void {
+    const zones = this.getActiveInitiativeZones();
+    for (const zone of zones) {
+      zone.entries = zone.entries.filter(e => e.tokenId !== tokenId);
+    }
+    this.persist();
+  }
+
+  updateInitiativeZones(newZones: InitiativeZone[]): void {
+    const scene = this.getActiveScene();
+    if (!scene) return;
+    if (!scene.initiative) scene.initiative = { zones: [] };
+    scene.initiative.zones = newZones;
     this.persist();
   }
 

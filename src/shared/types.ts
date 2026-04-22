@@ -66,6 +66,20 @@ export interface MapSettings {
   gridOffsetY: number;
 }
 
+export interface InitiativeEntry {
+  tokenId: string;
+}
+
+export interface InitiativeZone {
+  id: string;
+  title: string;
+  entries: InitiativeEntry[];
+}
+
+export interface InitiativeState {
+  zones: InitiativeZone[];
+}
+
 export interface Scene {
   id: string;
   name: string;
@@ -73,6 +87,7 @@ export interface Scene {
   map: MapSettings;
   drawing?: DrawingLayer;
   nextLabelIndex?: number;  // Counter for token label assignment; never decremented
+  initiative?: InitiativeState;
 }
 
 export interface GameState {
@@ -111,7 +126,12 @@ export type WSMessage =
   | { type: 'draw:clear'; sceneId: string; layers: DrawLayerType[] }
   | { type: 'token:move-to-scene'; tokenId: string; targetSceneId: string }
   | { type: 'token:drag:update'; tokenId: string; playerId: string; x: number; y: number; startX: number; startY: number }
-  | { type: 'token:drag:clear'; tokenId: string; playerId: string };
+  | { type: 'token:drag:clear'; tokenId: string; playerId: string }
+  | { type: 'initiative:add-zone'; title: string }
+  | { type: 'initiative:remove-zone'; zoneId: string }
+  | { type: 'initiative:add-token'; tokenId: string }
+  | { type: 'initiative:remove-token'; tokenId: string }
+  | { type: 'initiative:update'; sceneId: string; zones: InitiativeZone[] };
 
 export const DEFAULT_MAP_SETTINGS: MapSettings = {
   backgroundUrl: null,

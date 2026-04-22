@@ -1,4 +1,4 @@
-import { GameState, Token, Measurement, Scene, createDefaultGameState, DrawTool, DrawStroke, ChunkKey, DrawLayerType } from '../shared/types.js';
+import { GameState, Token, Measurement, Scene, createDefaultGameState, DrawTool, DrawStroke, ChunkKey, DrawLayerType, InitiativeZone } from '../shared/types.js';
 import { wsClient } from './websocket.js';
 import { initCanvas, render, loadBackground, getCanvas, getContext, resizeCanvas, clearBackground, setBackgroundReady, DragDropState, RemoteTokenDrag } from './canvas.js';
 import { createToolState, setTool, startDrag, updateDrag, endDrag, Tool, ToolState, getCurrentMeasurement } from './tools.js';
@@ -124,6 +124,18 @@ let drawingOpacity = 1.0;
 // Valid image types for drag-and-drop
 const VALID_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
+// Initiative tracker state
+let initiativeCollapsed = localStorage.getItem('simple-vtt-initiative-collapsed') === 'true';
+let initiativeDragTokenId: string | null = null;
+let initiativeDragGhostEl: HTMLImageElement | null = null;
+let initiativePlaceholder: HTMLDivElement | null = null;
+let initiativeDropZoneId: string | null = null;
+let initiativeDropIndex = -1;
+let initiativeZoneDragId: string | null = null;
+let initiativeZoneDragGhostEl: HTMLDivElement | null = null;
+let initiativeZonePlaceholder: HTMLDivElement | null = null;
+let initiativeZoneDropIndex = -1;
+
 // Touch handling state
 const activePointers = new Map<number, { x: number; y: number }>();
 let lastPinchDistance = 0;
@@ -164,6 +176,7 @@ function init(): void {
   setupCanvasEvents(canvas);
   setupContextMenu();
   setupDragAndDrop(canvas);
+  setupInitiativeTracker();
 
   // Initial mobile mode detection
   if (window.matchMedia('(pointer: coarse)').matches) {
@@ -223,6 +236,7 @@ function init(): void {
           wsClient.requestDrawingSync(syncScene.id);
         }
         updateSceneSelector(gameState.scenes, gameState.activeSceneId);
+        renderInitiativeBar();
         break;
 
       case 'token:add':
@@ -251,6 +265,13 @@ function init(): void {
           if (selectedTokenId === message.id) {
             selectedTokenId = null;
           }
+          // Remove from initiative tracker too (server cleans up state, client mirrors it)
+          if (removeScene.initiative) {
+            for (const zone of removeScene.initiative.zones) {
+              zone.entries = zone.entries.filter(e => e.tokenId !== message.id);
+            }
+          }
+          renderInitiativeBar();
         }
         break;
 
@@ -353,6 +374,7 @@ function init(): void {
         updateSceneSelector(gameState.scenes, gameState.activeSceneId);
         selectedTokenId = null;
         draggedToken = null;
+        renderInitiativeBar();
         break;
 
       case 'scene:rename':
@@ -417,6 +439,16 @@ function init(): void {
           remoteTokenDrags.delete(message.playerId);
         }
         break;
+
+      case 'initiative:update': {
+        const initScene = gameState.scenes.find(s => s.id === message.sceneId);
+        if (initScene) {
+          if (!initScene.initiative) initScene.initiative = { zones: [] };
+          initScene.initiative.zones = message.zones;
+          renderInitiativeBar();
+        }
+        break;
+      }
     }
   });
 
@@ -586,6 +618,8 @@ function setupEventHandlers(): void {
       const brush = oldLayer.getBrush();
       newLayer.setBrush(brush);
     }
+    // Re-render initiative bar to show/hide DM-only elements (handles, add-zone button)
+    renderInitiativeBar();
   });
 }
 
@@ -1127,6 +1161,15 @@ function showContextMenu(x: number, y: number, tokenId: string): void {
     }
   }
 
+  // Toggle initiative context menu items
+  const addToInitBtn = menu.querySelector('[data-action="add-to-initiative"]') as HTMLElement | null;
+  const removeFromInitBtn = menu.querySelector('[data-action="remove-from-initiative"]') as HTMLElement | null;
+  if (addToInitBtn && removeFromInitBtn) {
+    const inInit = isTokenInInitiative(tokenId);
+    addToInitBtn.classList.toggle('hidden', inInit);
+    removeFromInitBtn.classList.toggle('hidden', !inInit);
+  }
+
   // Position the menu
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
@@ -1200,6 +1243,12 @@ function setupContextMenu(): void {
       if (target.classList.contains('disabled')) {
         return;
       }
+    } else if (action === 'add-to-initiative' && contextMenuTokenId) {
+      wsClient.send({ type: 'initiative:add-token', tokenId: contextMenuTokenId });
+      hideContextMenu();
+    } else if (action === 'remove-from-initiative' && contextMenuTokenId) {
+      wsClient.send({ type: 'initiative:remove-token', tokenId: contextMenuTokenId });
+      hideContextMenu();
     }
   });
 
@@ -1367,6 +1416,346 @@ function setupFullscreenButton(): void {
   });
 
   document.addEventListener('fullscreenchange', updateFullscreenIcons);
+}
+
+// ── Initiative Tracker ─────────────────────────────────────────────────────────
+
+function getInitiativeZones(): InitiativeZone[] {
+  return getActiveScene()?.initiative?.zones ?? [];
+}
+
+function isTokenInInitiative(tokenId: string): boolean {
+  return getInitiativeZones().some(z => z.entries.some(e => e.tokenId === tokenId));
+}
+
+function setInitiativeCollapsed(collapsed: boolean): void {
+  initiativeCollapsed = collapsed;
+  localStorage.setItem('simple-vtt-initiative-collapsed', String(collapsed));
+  document.getElementById('initiative-bar')?.classList.toggle('hidden', collapsed);
+  document.getElementById('expand-initiative-btn')?.classList.toggle('hidden', !collapsed);
+  resizeCanvas();
+}
+
+function renderInitiativeBar(): void {
+  const zonesContainer = document.getElementById('initiative-zones');
+  if (!zonesContainer) return;
+
+  const zones = getInitiativeZones();
+  const dm = isDmMode();
+  const tokens = getActiveScene()?.tokens ?? [];
+
+  zonesContainer.innerHTML = '';
+
+  zones.forEach(zone => {
+    const zoneEl = document.createElement('div');
+    zoneEl.className = 'initiative-zone';
+    zoneEl.dataset.zoneId = zone.id;
+
+    // Background watermark title
+    const titleEl = document.createElement('div');
+    titleEl.className = 'initiative-zone-title';
+    titleEl.textContent = zone.title;
+    zoneEl.appendChild(titleEl);
+
+    // DM-only grab handle for zone reordering
+    if (dm) {
+      const handle = document.createElement('div');
+      handle.className = 'initiative-zone-handle';
+      handle.dataset.zoneId = zone.id;
+      handle.title = 'Drag to reorder';
+      handle.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="4" y1="7" x2="20" y2="7"/>
+        <line x1="4" y1="12" x2="20" y2="12"/>
+        <line x1="4" y1="17" x2="20" y2="17"/>
+      </svg>`;
+      zoneEl.appendChild(handle);
+    }
+
+    // Token thumbnails
+    zone.entries.forEach(entry => {
+      const token = tokens.find(t => t.id === entry.tokenId);
+      if (!token) return;
+
+      const img = document.createElement('img') as HTMLImageElement;
+      img.className = 'initiative-token-thumb';
+      img.src = token.imageUrl;
+      img.title = token.name ?? token.label ?? '';
+      img.dataset.tokenId = token.id;
+      img.dataset.zoneId = zone.id;
+      img.draggable = false;
+      zoneEl.appendChild(img);
+    });
+
+    zonesContainer.appendChild(zoneEl);
+  });
+
+  // Show/hide add zone button based on DM mode
+  const addZoneBtn = document.getElementById('add-initiative-zone-btn');
+  if (addZoneBtn) {
+    (addZoneBtn as HTMLElement).style.display = dm ? '' : 'none';
+  }
+}
+
+function setupInitiativeTracker(): void {
+  // Apply initial collapsed state (before first render)
+  const bar = document.getElementById('initiative-bar');
+  const expandBtn = document.getElementById('expand-initiative-btn');
+  if (bar) bar.classList.toggle('hidden', initiativeCollapsed);
+  if (expandBtn) expandBtn.classList.toggle('hidden', !initiativeCollapsed);
+  // Recalculate canvas size now that we know the bar's visibility
+  resizeCanvas();
+
+  document.getElementById('collapse-initiative-btn')?.addEventListener('click', () => {
+    setInitiativeCollapsed(true);
+  });
+
+  document.getElementById('expand-initiative-btn')?.addEventListener('click', () => {
+    setInitiativeCollapsed(false);
+  });
+
+  document.getElementById('add-initiative-zone-btn')?.addEventListener('click', () => {
+    const title = prompt('Zone name:');
+    if (title && title.trim()) {
+      wsClient.send({ type: 'initiative:add-zone', title: title.trim() });
+    }
+  });
+
+  setupInitiativeDragDrop();
+}
+
+function setupInitiativeDragDrop(): void {
+  // ── Token drag ────────────────────────────────────────────────────────────
+
+  document.addEventListener('mousedown', (e) => {
+    const target = e.target as HTMLElement;
+
+    if (target.classList.contains('initiative-token-thumb')) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      initiativeDragTokenId = target.dataset.tokenId ?? null;
+
+      // Create ghost image
+      const ghost = document.createElement('img') as HTMLImageElement;
+      ghost.className = 'initiative-drag-ghost';
+      ghost.src = (target as HTMLImageElement).src;
+      ghost.style.left = `${e.clientX}px`;
+      ghost.style.top = `${e.clientY}px`;
+      document.body.appendChild(ghost);
+      initiativeDragGhostEl = ghost;
+
+      // Create drop placeholder (detached until we hover a zone)
+      initiativePlaceholder = document.createElement('div');
+      initiativePlaceholder.className = 'initiative-drop-placeholder';
+
+      return;
+    }
+
+    // ── Zone handle drag (DM only) ────────────────────────────────────────
+    if (target.classList.contains('initiative-zone-handle') && isDmMode()) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      initiativeZoneDragId = target.dataset.zoneId ?? null;
+
+      const zoneEl = target.closest('.initiative-zone') as HTMLElement | null;
+      const title = zoneEl?.querySelector('.initiative-zone-title')?.textContent ?? '';
+
+      const ghost = document.createElement('div');
+      ghost.className = 'initiative-zone-ghost';
+      ghost.textContent = title;
+      if (zoneEl) ghost.style.width = `${zoneEl.offsetWidth}px`;
+      ghost.style.left = `${e.clientX}px`;
+      ghost.style.top = `${e.clientY}px`;
+      document.body.appendChild(ghost);
+      initiativeZoneDragGhostEl = ghost;
+
+      initiativeZonePlaceholder = document.createElement('div');
+      initiativeZonePlaceholder.className = 'initiative-zone-drop-placeholder';
+      if (zoneEl) initiativeZonePlaceholder.style.minWidth = `${zoneEl.offsetWidth}px`;
+    }
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (initiativeDragGhostEl && initiativeDragTokenId !== null) {
+      initiativeDragGhostEl.style.left = `${e.clientX}px`;
+      initiativeDragGhostEl.style.top = `${e.clientY}px`;
+      updateInitiativeTokenDropTarget(e.clientX, e.clientY);
+      return;
+    }
+
+    if (initiativeZoneDragGhostEl && initiativeZoneDragId !== null) {
+      initiativeZoneDragGhostEl.style.left = `${e.clientX}px`;
+      initiativeZoneDragGhostEl.style.top = `${e.clientY}px`;
+      updateInitiativeZoneDropTarget(e.clientX, e.clientY);
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (initiativeDragTokenId !== null) {
+      if (initiativeDropZoneId !== null && initiativeDropIndex !== -1) {
+        commitInitiativeTokenDrop();
+      }
+      cleanupInitiativeTokenDrag();
+    }
+
+    if (initiativeZoneDragId !== null) {
+      if (initiativeZoneDropIndex !== -1) {
+        commitInitiativeZoneDrop();
+      }
+      cleanupInitiativeZoneDrag();
+    }
+  });
+}
+
+function updateInitiativeTokenDropTarget(clientX: number, clientY: number): void {
+  // Ghost is pointer-events:none so elementFromPoint works directly
+  const el = document.elementFromPoint(clientX, clientY);
+  const zoneEl = el?.closest('.initiative-zone') as HTMLElement | null;
+
+  // Remove placeholder from its current parent
+  initiativePlaceholder?.remove();
+
+  document.querySelectorAll('.initiative-zone').forEach(z => z.classList.remove('drag-over'));
+
+  if (zoneEl) {
+    initiativeDropZoneId = zoneEl.dataset.zoneId ?? null;
+
+    // Find insertion index based on cursor X among existing thumbs
+    const thumbs = Array.from(
+      zoneEl.querySelectorAll('.initiative-token-thumb')
+    ) as HTMLElement[];
+
+    let insertIndex = thumbs.length;
+    for (let i = 0; i < thumbs.length; i++) {
+      const rect = thumbs[i].getBoundingClientRect();
+      if (clientX < rect.left + rect.width / 2) {
+        insertIndex = i;
+        break;
+      }
+    }
+    initiativeDropIndex = insertIndex;
+
+    // Insert placeholder at computed position
+    if (initiativePlaceholder) {
+      if (insertIndex < thumbs.length) {
+        zoneEl.insertBefore(initiativePlaceholder, thumbs[insertIndex]);
+      } else {
+        zoneEl.appendChild(initiativePlaceholder);
+      }
+    }
+
+    zoneEl.classList.add('drag-over');
+  } else {
+    initiativeDropZoneId = null;
+    initiativeDropIndex = -1;
+  }
+}
+
+function commitInitiativeTokenDrop(): void {
+  if (!initiativeDragTokenId || !initiativeDropZoneId) return;
+
+  const zones = getInitiativeZones();
+  const newZones: InitiativeZone[] = JSON.parse(JSON.stringify(zones));
+
+  // Remove token from all zones
+  for (const zone of newZones) {
+    zone.entries = zone.entries.filter(e => e.tokenId !== initiativeDragTokenId);
+  }
+
+  const targetZone = newZones.find(z => z.id === initiativeDropZoneId);
+  if (!targetZone) return;
+
+  const insertIdx = Math.min(initiativeDropIndex, targetZone.entries.length);
+  targetZone.entries.splice(insertIdx, 0, { tokenId: initiativeDragTokenId! });
+
+  const activeScene = getActiveScene();
+  if (!activeScene) return;
+
+  // Optimistic update
+  if (!activeScene.initiative) activeScene.initiative = { zones: [] };
+  activeScene.initiative.zones = newZones;
+  renderInitiativeBar();
+
+  wsClient.send({ type: 'initiative:update', sceneId: activeScene.id, zones: newZones });
+}
+
+function cleanupInitiativeTokenDrag(): void {
+  initiativeDragGhostEl?.remove();
+  initiativeDragGhostEl = null;
+  initiativePlaceholder?.remove();
+  initiativePlaceholder = null;
+  initiativeDragTokenId = null;
+  initiativeDropZoneId = null;
+  initiativeDropIndex = -1;
+  document.querySelectorAll('.initiative-zone').forEach(z => z.classList.remove('drag-over'));
+}
+
+function updateInitiativeZoneDropTarget(clientX: number, clientY: number): void {
+  const container = document.getElementById('initiative-zones');
+  if (!container) return;
+
+  initiativeZonePlaceholder?.remove();
+
+  const allZones = Array.from(
+    container.querySelectorAll('.initiative-zone')
+  ) as HTMLElement[];
+
+  let insertIndex = allZones.length;
+  for (let i = 0; i < allZones.length; i++) {
+    const rect = allZones[i].getBoundingClientRect();
+    if (clientX < rect.left + rect.width / 2) {
+      insertIndex = i;
+      break;
+    }
+  }
+  initiativeZoneDropIndex = insertIndex;
+
+  if (initiativeZonePlaceholder) {
+    if (insertIndex < allZones.length) {
+      container.insertBefore(initiativeZonePlaceholder, allZones[insertIndex]);
+    } else {
+      container.appendChild(initiativeZonePlaceholder);
+    }
+  }
+}
+
+function commitInitiativeZoneDrop(): void {
+  if (!initiativeZoneDragId) return;
+
+  const zones = getInitiativeZones();
+  const newZones: InitiativeZone[] = JSON.parse(JSON.stringify(zones));
+
+  const draggedIdx = newZones.findIndex(z => z.id === initiativeZoneDragId);
+  if (draggedIdx === -1) return;
+
+  const [draggedZone] = newZones.splice(draggedIdx, 1);
+
+  // Adjust insertIndex since one zone was removed before the target index
+  let insertIdx = initiativeZoneDropIndex;
+  if (draggedIdx < insertIdx) insertIdx--;
+  insertIdx = Math.min(Math.max(0, insertIdx), newZones.length);
+
+  newZones.splice(insertIdx, 0, draggedZone);
+
+  const activeScene = getActiveScene();
+  if (!activeScene) return;
+
+  // Optimistic update
+  if (!activeScene.initiative) activeScene.initiative = { zones: [] };
+  activeScene.initiative.zones = newZones;
+  renderInitiativeBar();
+
+  wsClient.send({ type: 'initiative:update', sceneId: activeScene.id, zones: newZones });
+}
+
+function cleanupInitiativeZoneDrag(): void {
+  initiativeZoneDragGhostEl?.remove();
+  initiativeZoneDragGhostEl = null;
+  initiativeZonePlaceholder?.remove();
+  initiativeZonePlaceholder = null;
+  initiativeZoneDragId = null;
+  initiativeZoneDropIndex = -1;
 }
 
 // Prevent browser UI from scrolling back on touch drag (mobile address bar)

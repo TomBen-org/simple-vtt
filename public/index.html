@@ -252,6 +252,27 @@
 
   <canvas id="game-canvas"></canvas>
 
+  <div id="initiative-bar">
+    <div id="initiative-zones"></div>
+    <div id="initiative-bar-end">
+      <button id="add-initiative-zone-btn" class="icon-btn" title="Add Zone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+      <button id="collapse-initiative-btn" class="icon-btn" title="Collapse Initiative">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <button id="expand-initiative-btn" class="icon-btn hidden" title="Show Initiative">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="18 15 12 9 6 15"/>
+    </svg>
+  </button>
+
   <div id="context-menu" class="context-menu hidden">
     <div class="context-menu-header">Token</div>
     <div class="context-menu-section">
@@ -268,6 +289,9 @@
       <div class="context-menu-submenu-content" id="scene-submenu">
       </div>
     </div>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item" data-action="add-to-initiative">Add to Initiative</button>
+    <button class="context-menu-item" data-action="remove-from-initiative">Remove from Initiative</button>
     <div class="context-menu-divider"></div>
     <button class="context-menu-item danger" data-action="delete">Delete</button>
   </div>

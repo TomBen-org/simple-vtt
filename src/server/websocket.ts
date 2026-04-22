@@ -171,6 +171,48 @@ function handleMessage(message: WSMessage, sender: WebSocket): void {
       // Broadcast drag clear to all other clients
       broadcastExcept(message, sender);
       break;
+
+    case 'initiative:add-zone': {
+      stateManager.addInitiativeZone(message.title);
+      const activeScene = stateManager.getActiveScene();
+      if (activeScene) {
+        broadcast({ type: 'initiative:update', sceneId: activeScene.id, zones: stateManager.getInitiativeZones() });
+      }
+      break;
+    }
+
+    case 'initiative:remove-zone': {
+      stateManager.removeInitiativeZone(message.zoneId);
+      const activeScene = stateManager.getActiveScene();
+      if (activeScene) {
+        broadcast({ type: 'initiative:update', sceneId: activeScene.id, zones: stateManager.getInitiativeZones() });
+      }
+      break;
+    }
+
+    case 'initiative:add-token': {
+      stateManager.addTokenToInitiative(message.tokenId);
+      const activeScene = stateManager.getActiveScene();
+      if (activeScene) {
+        broadcast({ type: 'initiative:update', sceneId: activeScene.id, zones: stateManager.getInitiativeZones() });
+      }
+      break;
+    }
+
+    case 'initiative:remove-token': {
+      stateManager.removeTokenFromInitiative(message.tokenId);
+      const activeScene = stateManager.getActiveScene();
+      if (activeScene) {
+        broadcast({ type: 'initiative:update', sceneId: activeScene.id, zones: stateManager.getInitiativeZones() });
+      }
+      break;
+    }
+
+    case 'initiative:update': {
+      stateManager.updateInitiativeZones(message.zones);
+      broadcast(message);
+      break;
+    }
   }
 }
 

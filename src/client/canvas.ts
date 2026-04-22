@@ -56,6 +56,9 @@ export function resizeCanvas(): void {
   const isMobile = document.body.classList.contains('mobile-mode');
   const isLandscape = window.matchMedia('(orientation: landscape)').matches;
 
+  const initiativeBar = document.getElementById('initiative-bar');
+  const initiativeH = (initiativeBar && !initiativeBar.classList.contains('hidden')) ? 100 : 0;
+
   let cssWidth: number;
   let cssHeight: number;
 
@@ -63,15 +66,15 @@ export function resizeCanvas(): void {
     // Landscape mobile: toolbar on left side - use min(70px, 12vh) to match CSS
     const toolbarWidth = Math.min(70, window.innerHeight * 0.12);
     cssWidth = window.innerWidth - toolbarWidth;
-    cssHeight = window.innerHeight;
+    cssHeight = window.innerHeight - initiativeH;
   } else if (isMobile) {
     // Portrait mobile: toolbar on top (70px)
     cssWidth = window.innerWidth;
-    cssHeight = window.innerHeight - 70;
+    cssHeight = window.innerHeight - 70 - initiativeH;
   } else {
     // Desktop: toolbar on top (60px)
     cssWidth = window.innerWidth;
-    cssHeight = window.innerHeight - 60;
+    cssHeight = window.innerHeight - 60 - initiativeH;
   }
 
   // Set backing store to physical pixels
