@@ -806,6 +806,7 @@ body.mobile-mode .context-menu {
   display: flex;
   flex-direction: row;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   flex: 1;
   min-width: 40px;
