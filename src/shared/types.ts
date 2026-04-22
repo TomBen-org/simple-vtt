@@ -74,6 +74,7 @@ export interface InitiativeZone {
   id: string;
   title: string;
   entries: InitiativeEntry[];
+  color?: string;  // Optional hex color for the zone background/border
 }
 
 export interface InitiativeState {

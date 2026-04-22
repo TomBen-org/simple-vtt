@@ -642,7 +642,7 @@ body.mobile-mode .context-menu {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 100px;
+  height: 64px;
   display: flex;
   flex-direction: row;
   background: #131320;
@@ -660,8 +660,8 @@ body.mobile-mode .context-menu {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: 8px;
-  padding: 8px;
+  gap: 6px;
+  padding: 4px 6px;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -680,16 +680,18 @@ body.mobile-mode .context-menu {
 
 .initiative-zone {
   position: relative;
-  min-width: 90px;
+  /* Grow to fill space, never shrink below content */
+  flex: 1 0 auto;
+  /* Minimum = 1 token + padding (no handle); handle-col adds width in DM mode naturally */
+  min-width: 50px;
   border: 2px dashed #4a4a6e;
   border-radius: 6px;
   display: flex;
   flex-direction: row;
-  align-items: center;
-  padding: 4px 6px;
+  align-items: stretch;
+  padding: 2px 4px;
   gap: 4px;
-  flex-shrink: 0;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .initiative-zone.drag-over {
@@ -714,11 +716,45 @@ body.mobile-mode .context-menu {
   text-transform: uppercase;
 }
 
+.initiative-zone-handle-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  width: 16px;
+  position: relative;
+  z-index: 1;
+  padding: 1px 0;
+  gap: 1px;
+}
+
+.initiative-zone-color-btn {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 1px solid #555;
+  border-radius: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+.initiative-zone-color-btn::-webkit-color-swatch-wrapper {
+  padding: 1px;
+}
+
+.initiative-zone-color-btn::-webkit-color-swatch {
+  border-radius: 1px;
+  border: none;
+}
+
 .initiative-zone-handle {
   cursor: grab;
-  width: 14px;
-  height: 100%;
-  flex-shrink: 0;
+  flex: 1;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -733,17 +769,53 @@ body.mobile-mode .context-menu {
 }
 
 .initiative-zone-handle svg {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
 }
 
 .initiative-zone-handle:active {
   cursor: grabbing;
 }
 
+.initiative-zone-remove-btn {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 1px solid #5a3a3a;
+  border-radius: 2px;
+  background: transparent;
+  color: #c06060;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.initiative-zone-remove-btn:hover {
+  opacity: 1;
+  background: rgba(180, 60, 60, 0.25);
+  border-color: #c06060;
+}
+
+.initiative-zone-tokens {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 40px;
+  position: relative;
+  z-index: 1;
+}
+
 .initiative-token-thumb {
-  width: 52px;
-  height: 52px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   cursor: grab;
   object-fit: cover;
@@ -767,8 +839,8 @@ body.mobile-mode .context-menu {
   position: fixed;
   pointer-events: none;
   z-index: 2000;
-  width: 52px;
-  height: 52px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   opacity: 0.65;
   border: 2px dashed #9b8fff;
@@ -778,8 +850,8 @@ body.mobile-mode .context-menu {
 }
 
 .initiative-drop-placeholder {
-  width: 52px;
-  height: 52px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   flex-shrink: 0;
   border: 2px dashed #9b8fff;
@@ -792,8 +864,8 @@ body.mobile-mode .context-menu {
   position: fixed;
   pointer-events: none;
   z-index: 2000;
-  height: 82px;
-  min-width: 90px;
+  height: 50px;
+  min-width: 60px;
   border: 2px dashed #9b8fff;
   border-radius: 6px;
   opacity: 0.55;
@@ -802,13 +874,13 @@ body.mobile-mode .context-menu {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 12px;
   color: #9b8fff;
-  padding: 0 8px;
+  padding: 0 6px;
 }
 
 .initiative-zone-drop-placeholder {
-  min-width: 90px;
+  min-width: 60px;
   border: 2px dashed #9b8fff;
   border-radius: 6px;
   opacity: 0.4;

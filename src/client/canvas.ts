@@ -57,7 +57,7 @@ export function resizeCanvas(): void {
   const isLandscape = window.matchMedia('(orientation: landscape)').matches;
 
   const initiativeBar = document.getElementById('initiative-bar');
-  const initiativeH = (initiativeBar && !initiativeBar.classList.contains('hidden')) ? 100 : 0;
+  const initiativeH = (initiativeBar && !initiativeBar.classList.contains('hidden')) ? 64 : 0;
 
   let cssWidth: number;
   let cssHeight: number;

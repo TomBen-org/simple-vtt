@@ -1451,14 +1451,42 @@ function renderInitiativeBar(): void {
     zoneEl.className = 'initiative-zone';
     zoneEl.dataset.zoneId = zone.id;
 
+    // Apply custom zone color
+    if (zone.color) {
+      const hex = zone.color.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      zoneEl.style.borderColor = zone.color;
+      zoneEl.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.12)`;
+    }
+
     // Background watermark title
     const titleEl = document.createElement('div');
     titleEl.className = 'initiative-zone-title';
     titleEl.textContent = zone.title;
     zoneEl.appendChild(titleEl);
 
-    // DM-only grab handle for zone reordering
+    // DM-only handle column (color picker + drag handle)
     if (dm) {
+      const handleCol = document.createElement('div');
+      handleCol.className = 'initiative-zone-handle-col';
+
+      // Color picker button
+      const colorInput = document.createElement('input') as HTMLInputElement;
+      colorInput.type = 'color';
+      colorInput.className = 'initiative-zone-color-btn';
+      colorInput.title = 'Zone color';
+      colorInput.value = zone.color ?? '#4a4a6e';
+      colorInput.dataset.zoneId = zone.id;
+      // Prevent mousedown from triggering zone drag
+      colorInput.addEventListener('mousedown', (e) => e.stopPropagation());
+      colorInput.addEventListener('change', () => {
+        updateZoneColor(zone.id, colorInput.value);
+      });
+      handleCol.appendChild(colorInput);
+
+      // Drag handle
       const handle = document.createElement('div');
       handle.className = 'initiative-zone-handle';
       handle.dataset.zoneId = zone.id;
@@ -1468,10 +1496,28 @@ function renderInitiativeBar(): void {
         <line x1="4" y1="12" x2="20" y2="12"/>
         <line x1="4" y1="17" x2="20" y2="17"/>
       </svg>`;
-      zoneEl.appendChild(handle);
+      handleCol.appendChild(handle);
+
+      // Remove zone button
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'initiative-zone-remove-btn';
+      removeBtn.title = 'Remove zone';
+      removeBtn.textContent = '×';
+      removeBtn.dataset.zoneId = zone.id;
+      removeBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+      removeBtn.addEventListener('click', () => {
+        wsClient.send({ type: 'initiative:remove-zone', zoneId: zone.id });
+      });
+      handleCol.appendChild(removeBtn);
+
+      zoneEl.appendChild(handleCol);
     }
 
-    // Token thumbnails
+    // Token thumbnails in their own flex container
+    const tokensArea = document.createElement('div');
+    tokensArea.className = 'initiative-zone-tokens';
+    tokensArea.dataset.zoneId = zone.id;
+
     zone.entries.forEach(entry => {
       const token = tokens.find(t => t.id === entry.tokenId);
       if (!token) return;
@@ -1483,9 +1529,10 @@ function renderInitiativeBar(): void {
       img.dataset.tokenId = token.id;
       img.dataset.zoneId = zone.id;
       img.draggable = false;
-      zoneEl.appendChild(img);
+      tokensArea.appendChild(img);
     });
 
+    zoneEl.appendChild(tokensArea);
     zonesContainer.appendChild(zoneEl);
   });
 
@@ -1494,6 +1541,23 @@ function renderInitiativeBar(): void {
   if (addZoneBtn) {
     (addZoneBtn as HTMLElement).style.display = dm ? '' : 'none';
   }
+}
+
+function updateZoneColor(zoneId: string, color: string): void {
+  const zones = getInitiativeZones();
+  const newZones: InitiativeZone[] = JSON.parse(JSON.stringify(zones));
+  const zone = newZones.find(z => z.id === zoneId);
+  if (!zone) return;
+  zone.color = color;
+
+  const activeScene = getActiveScene();
+  if (!activeScene) return;
+
+  if (!activeScene.initiative) activeScene.initiative = { zones: [] };
+  activeScene.initiative.zones = newZones;
+  renderInitiativeBar();
+
+  wsClient.send({ type: 'initiative:update', sceneId: activeScene.id, zones: newZones });
 }
 
 function setupInitiativeTracker(): void {
@@ -1552,13 +1616,14 @@ function setupInitiativeDragDrop(): void {
     }
 
     // ── Zone handle drag (DM only) ────────────────────────────────────────
-    if (target.classList.contains('initiative-zone-handle') && isDmMode()) {
+    const handleEl = target.closest('.initiative-zone-handle') as HTMLElement | null;
+    if (handleEl && isDmMode()) {
       e.preventDefault();
       e.stopPropagation();
 
-      initiativeZoneDragId = target.dataset.zoneId ?? null;
+      initiativeZoneDragId = handleEl.dataset.zoneId ?? null;
 
-      const zoneEl = target.closest('.initiative-zone') as HTMLElement | null;
+      const zoneEl = handleEl.closest('.initiative-zone') as HTMLElement | null;
       const title = zoneEl?.querySelector('.initiative-zone-title')?.textContent ?? '';
 
       const ghost = document.createElement('div');
@@ -1636,12 +1701,13 @@ function updateInitiativeTokenDropTarget(clientX: number, clientY: number): void
     }
     initiativeDropIndex = insertIndex;
 
-    // Insert placeholder at computed position
+    // Insert placeholder at computed position inside the tokens area
     if (initiativePlaceholder) {
+      const tokensArea = (zoneEl.querySelector('.initiative-zone-tokens') as HTMLElement | null) ?? zoneEl;
       if (insertIndex < thumbs.length) {
-        zoneEl.insertBefore(initiativePlaceholder, thumbs[insertIndex]);
+        tokensArea.insertBefore(initiativePlaceholder, thumbs[insertIndex]);
       } else {
-        zoneEl.appendChild(initiativePlaceholder);
+        tokensArea.appendChild(initiativePlaceholder);
       }
     }
 
